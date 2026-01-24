@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+</head>
+<body>
+<h2>Dashboard</h2>
+
+<button id="logoutBtn">Sair</button>
+<p id="status"></p>
+
+<hr>
+
+<h3>Cadastrar música</h3>
+<input id="cantor" placeholder="Cantor"><br><br>
+<input id="musica" placeholder="Música"><br><br>
+<input id="tom" placeholder="Tom"><br><br>
+<input id="link" placeholder="Link"><br><br>
+<button id="saveBtn">Salvar</button>
+<p id="msg"></p>
+
+<hr>
+
+<h3>Buscar</h3>
+<input id="busca" placeholder="Digite cantor ou música">
+<div id="sugestoes"></div>
+
+<h3>Resultados</h3>
+<ul id="lista"></ul>
+
+<script>
+  const API_BASE = "https://SUA-API.onrender.com";
+
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "index.html";
+
+  const status = document.getElementById("status");
+  const msg = document.getElementById("msg");
+  const lista = document.getElementById("lista");
+  const sugestoes = document.getElementById("sugestoes");
+
+  async function api(path, opts = {}) {
+    const r = await fetch(`${API_BASE}${path}`, {
+      ...opts,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        ...(opts.headers || {})
+      }
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "Erro na API");
+    return data;
+  }
+
+  async function carregar(q = "") {
+    lista.innerHTML = "<li>Carregando...</li>";
+    const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
+    if (!items.length) {
+      lista.innerHTML = "<li>Nenhuma música</li>";
+      return;
+    }
+    lista.innerHTML = "";
+    for (const s of items) {
+      const li = document.createElement("li");
+      li.innerHTML = `<strong>${s.cantor}</strong> - ${s.musica} (${s.tom || "-"}) ${s.link ? `- <a target="_blank" href="${s.link}">link</a>` : ""}`;
+      lista.appendChild(li);
+    }
+  }
+
+  document.getElementById("saveBtn").onclick = async () => {
+    msg.innerText = "Salvando...";
+    try {
+      await api("/api/songs", {
+        method: "POST",
+        body: JSON.stringify({
+          cantor: cantor.value,
+          musica: musica.value,
+          tom: tom.value,
+          link: link.value
+        })
+      });
+      msg.innerText = "✅ Salvo!";
+      cantor.value = musica.value = tom.value = link.value = "";
+      await carregar(busca.value.trim());
+    } catch (e) {
+      msg.innerText = "❌ " + e.message;
+    }
+  };
+
+  let t = null;
+  document.getElementById("busca").addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const q = busca.value.trim();
+      sugestoes.innerHTML = "";
+      if (!q) {
+        await carregar("");
+        return;
+      }
+
+      try {
+        const sug = await api(`/api/songs/suggest?q=${encodeURIComponent(q)}`, { method: "GET" });
+        sugestoes.innerHTML = sug.map(s => `<div class="sug">${s}</div>`).join("");
+        document.querySelectorAll(".sug").forEach(el => {
+          el.style.cursor = "pointer";
+          el.onclick = async () => {
+            busca.value = el.textContent;
+            sugestoes.innerHTML = "";
+            await carregar(busca.value.trim());
+          };
+        });
+
+        await carregar(q);
+      } catch {
+        // ignora sugestão se falhar
+      }
+    }, 250);
+  });
+
+  document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem("token");
+    window.location.href = "index.html";
+  };
+
+  status.innerText = "Logado.";
+  carregar("");
+</script>
+</body>
+</html>

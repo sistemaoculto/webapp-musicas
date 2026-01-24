@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+</head>
+<body>
+<h2>Login</h2>
+
+<input id="email" type="email" placeholder="Email"><br><br>
+<input id="password" type="password" placeholder="Senha"><br><br>
+<button id="loginBtn">Entrar</button>
+
+<p id="msg"></p>
+<p><a href="register.html">Criar conta</a></p>
+
+<script>
+  const API_BASE = "https://SUA-API.onrender.com";
+
+  const msg = document.getElementById("msg");
+  document.getElementById("loginBtn").onclick = async () => {
+    msg.innerText = "";
+    try {
+      const r = await fetch(`${API_BASE}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.value,
+          password: password.value
+        })
+      });
+
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Falha no login");
+
+      localStorage.setItem("token", data.token);
+      window.location.href = "dashboard.html";
+    } catch (e) {
+      msg.innerText = e.message;
+    }
+  };
+</script>
+</body>
+</html>
