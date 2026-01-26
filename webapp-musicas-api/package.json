@@ -1,5 +1,5 @@
 {
-  "name": "webapp-musicas-api",
+  "name": "webapp-musicas",
   "version": "1.0.0",
   "type": "module",
   "main": "server.js",
