@@ -1,33 +1,435 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Home</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#101a33;
+      --card:#0f1630cc;
+      --stroke:#2a3a66;
+      --text:#eaf0ff;
+      --muted:#a9b7e6;
+      --accent:#7aa7ff;
+      --accent2:#a78bfa;
+      --ok:#38d39f;
+      --err:#ff6b6b;
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+      --radius: 18px;
+      --radius2: 14px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      min-height:100vh;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,.25), transparent 60%),
+        radial-gradient(900px 500px at 90% 20%, rgba(167,139,250,.20), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+
+    .topbar{
+      position: sticky;
+      top:0;
+      z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(10, 15, 32, .55);
+      border-bottom: 1px solid rgba(42,58,102,.6);
+    }
+
+    .topbar-inner{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 220px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(42,58,102,.8);
+      background: rgba(15,22,48,.45);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .count{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .count b{
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .nav{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      flex: 1;
+    }
+
+    .nav button{
+      border:1px solid rgba(42,58,102,.7);
+      background: rgba(15,22,48,.35);
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 999px;
+      cursor:pointer;
+      transition: .15s ease;
+      font-weight:600;
+      letter-spacing:.2px;
+    }
+    .nav button:hover{
+      transform: translateY(-1px);
+      border-color: rgba(122,167,255,.65);
+      box-shadow: 0 12px 35px rgba(0,0,0,.25);
+    }
+    .nav button.active{
+      background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
+      border-color: rgba(122,167,255,.85);
+    }
+
+    .userbox{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      justify-content:flex-end;
+      min-width: 260px;
+    }
+    .userbox .logged{
+      text-align:right;
+      line-height: 1.1;
+    }
+    .userbox .logged .label{
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .userbox .logged .email{
+      font-size: 12px;
+      color: var(--text);
+      opacity: .95;
+      max-width: 210px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .logout{
+      border:none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor:pointer;
+      padding:6px 8px;
+      border-radius: 10px;
+      transition: .15s ease;
+      border:1px solid transparent;
+    }
+    .logout:hover{
+      color: var(--text);
+      border-color: rgba(42,58,102,.8);
+      background: rgba(15,22,48,.35);
+    }
+
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 26px 18px 60px;
+    }
+
+    .hero{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:18px;
+      margin: 18px 0 22px;
+    }
+    .hero h1{
+      margin:0;
+      font-size: 30px;
+      letter-spacing: .2px;
+    }
+    .hero p{
+      margin: 6px 0 0;
+      color: var(--muted);
+      max-width: 700px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:18px;
+    }
+
+    .card{
+      border: 1px solid rgba(42,58,102,.8);
+      background: rgba(15,22,48,.45);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .card-header{
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(42,58,102,.6);
+      background: linear-gradient(135deg, rgba(122,167,255,.10), rgba(167,139,250,.08));
+    }
+    .card-header .title{
+      font-weight: 800;
+      letter-spacing:.2px;
+      margin:0;
+    }
+    .card-header .subtitle{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .card-body{
+      padding: 18px;
+    }
+
+    .center{
+      display:flex;
+      justify-content:center;
+    }
+
+    .form{
+      width: min(640px, 100%);
+      display:grid;
+      gap:12px;
+      padding: 14px;
+      border-radius: var(--radius2);
+      border:1px solid rgba(42,58,102,.7);
+      background: rgba(10,15,32,.35);
+    }
+
+    .row2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 680px){
+      .row2{ grid-template-columns: 1fr; }
+      .brand{ min-width: 0; }
+      .userbox{ min-width: 0; }
+    }
+
+    label{
+      font-size: 12px;
+      color: var(--muted);
+      display:block;
+      margin: 2px 0 6px;
+    }
+
+    input{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(42,58,102,.85);
+      background: rgba(15,22,48,.55);
+      color: var(--text);
+      outline:none;
+      transition:.15s ease;
+    }
+    input:focus{
+      border-color: rgba(122,167,255,.85);
+      box-shadow: 0 0 0 4px rgba(122,167,255,.14);
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border:1px solid rgba(122,167,255,.75);
+      background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
+      color: var(--text);
+      font-weight: 800;
+      letter-spacing:.2px;
+      cursor:pointer;
+      transition: .15s ease;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      border-color: rgba(122,167,255,.95);
+    }
+
+    .msg{
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    .msg.ok{ color: var(--ok); }
+    .msg.err{ color: var(--err); }
+
+    /* Pesquisar */
+    .searchBox{
+      width: min(760px, 100%);
+      display:grid;
+      gap:10px;
+      padding: 14px;
+      border-radius: var(--radius2);
+      border:1px solid rgba(42,58,102,.7);
+      background: rgba(10,15,32,.35);
+    }
+    .suggestions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .tag{
+      border: 1px solid rgba(42,58,102,.8);
+      background: rgba(15,22,48,.45);
+      color: var(--text);
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .tag:hover{
+      border-color: rgba(122,167,255,.85);
+      transform: translateY(-1px);
+    }
+    ul{
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    li{
+      margin: 8px 0;
+      color: var(--text);
+      opacity: .95;
+    }
+    a{ color: var(--accent); }
+  </style>
 </head>
 <body>
 
-<h2>Dashboard</h2>
-<button id="logoutBtn">Sair</button>
-<p id="status"></p>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="pill count" title="Quantidade de músicas cadastradas">
+          🎵 <span>Total: <b id="count">0</b></span>
+        </div>
+      </div>
 
-<hr>
+      <nav class="nav">
+        <button id="navHome" class="active" type="button">HOME</button>
+        <button id="navSearch" type="button">PESQUISAR</button>
+      </nav>
 
-<h3>Cadastrar música</h3>
-<input id="cantor" placeholder="Cantor"><br><br>
-<input id="musica" placeholder="Música"><br><br>
-<input id="tom" placeholder="Tom"><br><br>
-<input id="link" placeholder="Link"><br><br>
-<button id="saveBtn">Salvar</button>
-<p id="msg"></p>
+      <div class="userbox">
+        <div class="logged">
+          <div class="label">Logado como</div>
+          <div class="email" id="userEmail">—</div>
+        </div>
+        <button id="logoutBtn" class="logout" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
 
-<hr>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <h1>Músicas da Jhenny 🐈‍⬛</h1>
+        <p>Cadastre as músicas com cantor, tom e link. Use <b>PESQUISAR</b> para encontrar rápido com sugestões enquanto digita.</p>
+      </div>
+    </section>
 
-<h3>Buscar</h3>
-<input id="busca" placeholder="Digite cantor ou música" autocomplete="off">
-<div id="sugestoes"></div>
+    <!-- HOME -->
+    <section id="viewHome" class="grid">
+      <div class="card">
+        <div class="card-header">
+          <p class="title">Cadastrar música</p>
+          <p class="subtitle">Preencha e salve — o formulário fica centralizado e bem limpo.</p>
+        </div>
 
-<h3>Resultados</h3>
-<ul id="lista"></ul>
+        <div class="card-body center">
+          <div class="form">
+            <div class="row2">
+              <div>
+                <label for="cantor">Cantor</label>
+                <input id="cantor" placeholder="Ex: Jorge & Mateus" />
+              </div>
+              <div>
+                <label for="musica">Música</label>
+                <input id="musica" placeholder="Ex: A Hora é Agora" />
+              </div>
+            </div>
+
+            <div class="row2">
+              <div>
+                <label for="tom">Tom</label>
+                <input id="tom" placeholder="Ex: Am / C / D" />
+              </div>
+              <div>
+                <label for="link">Link</label>
+                <input id="link" placeholder="Cole o link aqui" />
+              </div>
+            </div>
+
+            <button id="saveBtn" class="btn" type="button">Salvar</button>
+            <div id="msgHome" class="msg"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESQUISAR -->
+    <section id="viewSearch" class="grid" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <p class="title">Pesquisar</p>
+          <p class="subtitle">Digite cantor ou música. As sugestões aparecem conforme você digita.</p>
+        </div>
+        <div class="card-body center">
+          <div class="searchBox">
+            <div>
+              <label for="busca">Buscar</label>
+              <input id="busca" placeholder="Digite cantor ou música..." autocomplete="off"/>
+            </div>
+
+            <div>
+              <label>Sugestões</label>
+              <div id="sugestoes" class="suggestions"></div>
+            </div>
+
+            <div>
+              <label>Resultados</label>
+              <ul id="lista"></ul>
+            </div>
+
+            <div id="msgSearch" class="msg"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
@@ -35,17 +437,47 @@
   const token = localStorage.getItem("token");
   if (!token) window.location.href = "index.html";
 
-  const status = document.getElementById("status");
-  const msg = document.getElementById("msg");
-  const lista = document.getElementById("lista");
-  const sugestoes = document.getElementById("sugestoes");
+  // Navbar / views
+  const navHome = document.getElementById("navHome");
+  const navSearch = document.getElementById("navSearch");
+  const viewHome = document.getElementById("viewHome");
+  const viewSearch = document.getElementById("viewSearch");
+
+  function setActive(tab) {
+    if (tab === "home") {
+      navHome.classList.add("active");
+      navSearch.classList.remove("active");
+      viewHome.style.display = "";
+      viewSearch.style.display = "none";
+      document.title = "Home";
+    } else {
+      navSearch.classList.add("active");
+      navHome.classList.remove("active");
+      viewSearch.style.display = "";
+      viewHome.style.display = "none";
+      document.title = "Pesquisar";
+    }
+  }
+
+  navHome.onclick = () => setActive("home");
+  navSearch.onclick = () => setActive("search");
+
+  // UI elements
+  const userEmailEl = document.getElementById("userEmail");
+  const countEl = document.getElementById("count");
 
   const cantorEl = document.getElementById("cantor");
   const musicaEl = document.getElementById("musica");
   const tomEl = document.getElementById("tom");
   const linkEl = document.getElementById("link");
   const saveBtn = document.getElementById("saveBtn");
+  const msgHome = document.getElementById("msgHome");
+
   const buscaEl = document.getElementById("busca");
+  const sugestoesEl = document.getElementById("sugestoes");
+  const listaEl = document.getElementById("lista");
+  const msgSearch = document.getElementById("msgSearch");
+
   const logoutBtn = document.getElementById("logoutBtn");
 
   async function api(path, opts = {}) {
@@ -63,84 +495,137 @@
     return data;
   }
 
-  async function carregar(q = "") {
-    lista.innerHTML = "<li>Carregando...</li>";
-    const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
-
-    if (!items.length) {
-      lista.innerHTML = "<li>Nenhuma música</li>";
-      return;
-    }
-
-    lista.innerHTML = "";
-    for (const s of items) {
-      const li = document.createElement("li");
-      li.innerHTML = `<strong>${s.cantor}</strong> - ${s.musica} (${s.tom || "-"}) ${s.link ? `- <a target="_blank" href="${s.link}">link</a>` : ""}`;
-      lista.appendChild(li);
-    }
+  function setMsg(el, text, type) {
+    el.classList.remove("ok", "err");
+    if (type === "ok") el.classList.add("ok");
+    if (type === "err") el.classList.add("err");
+    el.textContent = text || "";
   }
 
-  saveBtn.onclick = async () => {
-    msg.innerText = "Salvando...";
-    try {
-      await api("/api/songs", {
-        method: "POST",
-        body: JSON.stringify({
-          cantor: cantorEl.value,
-          musica: musicaEl.value,
-          tom: tomEl.value,
-          link: linkEl.value
-        })
-      });
-
-      msg.innerText = "✅ Salvo!";
-      cantorEl.value = musicaEl.value = tomEl.value = linkEl.value = "";
-
-      await carregar(buscaEl.value.trim());
-    } catch (e) {
-      msg.innerText = "❌ " + e.message;
-    }
-  };
-
-  let timer = null;
-  buscaEl.addEventListener("input", () => {
-    clearTimeout(timer);
-    timer = setTimeout(async () => {
-      const q = buscaEl.value.trim();
-      sugestoes.innerHTML = "";
-
-      if (!q) {
-        await carregar("");
-        return;
-      }
-
-      try {
-        const sug = await api(`/api/songs/suggest?q=${encodeURIComponent(q)}`, { method: "GET" });
-        sugestoes.innerHTML = sug.map(s => `<div class="sug">${s}</div>`).join("");
-
-        document.querySelectorAll(".sug").forEach(el => {
-          el.style.cursor = "pointer";
-          el.onclick = async () => {
-            buscaEl.value = el.textContent;
-            sugestoes.innerHTML = "";
-            await carregar(buscaEl.value.trim());
-          };
-        });
-      } catch {
-        // sem sugestões, ok
-      }
-
-      await carregar(q);
-    }, 250);
-  });
-
+  // Logout
   logoutBtn.onclick = () => {
     localStorage.removeItem("token");
     window.location.href = "index.html";
   };
 
-  status.innerText = "Logado.";
-  carregar("");
+  // Load count + (optional) results
+  async function refreshCount() {
+    try {
+      const items = await api("/api/songs", { method: "GET" });
+      countEl.textContent = String(items.length);
+      return items;
+    } catch (e) {
+      // se token expirou
+      if ((e.message || "").toLowerCase().includes("token")) {
+        localStorage.removeItem("token");
+        window.location.href = "index.html";
+      }
+      throw e;
+    }
+  }
+
+  // Try to show user email (optional: decode JWT payload)
+  function tryShowEmailFromToken() {
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) return;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (payload && payload.email) userEmailEl.textContent = payload.email;
+    } catch {
+      // ignore
+    }
+  }
+
+  // HOME save
+  saveBtn.onclick = async () => {
+    setMsg(msgHome, "Salvando...", "");
+    try {
+      await api("/api/songs", {
+        method: "POST",
+        body: JSON.stringify({
+          cantor: cantorEl.value.trim(),
+          musica: musicaEl.value.trim(),
+          tom: tomEl.value.trim(),
+          link: linkEl.value.trim()
+        })
+      });
+
+      setMsg(msgHome, "✅ Música cadastrada!", "ok");
+      cantorEl.value = "";
+      musicaEl.value = "";
+      tomEl.value = "";
+      linkEl.value = "";
+
+      await refreshCount();
+    } catch (e) {
+      setMsg(msgHome, "❌ " + e.message, "err");
+    }
+  };
+
+  // SEARCH
+  async function carregarResultados(q = "") {
+    msgSearch.textContent = "";
+    listaEl.innerHTML = "<li>Carregando...</li>";
+
+    try {
+      const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
+
+      if (!items.length) {
+        listaEl.innerHTML = "<li>Nenhuma música encontrada</li>";
+        return;
+      }
+
+      listaEl.innerHTML = "";
+      for (const s of items) {
+        const li = document.createElement("li");
+        li.innerHTML =
+          `<strong>${s.cantor}</strong> - ${s.musica} (${s.tom || "-"})` +
+          (s.link ? ` — <a href="${s.link}" target="_blank">link</a>` : "");
+        listaEl.appendChild(li);
+      }
+    } catch (e) {
+      listaEl.innerHTML = "<li>Erro ao buscar</li>";
+      msgSearch.textContent = "❌ " + e.message;
+    }
+  }
+
+  async function carregarSugestoes(q) {
+    sugestoesEl.innerHTML = "";
+    if (!q) return;
+
+    try {
+      const sug = await api(`/api/songs/suggest?q=${encodeURIComponent(q)}`, { method: "GET" });
+      if (!Array.isArray(sug) || sug.length === 0) return;
+
+      for (const s of sug) {
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.textContent = s;
+        tag.onclick = async () => {
+          buscaEl.value = s;
+          sugestoesEl.innerHTML = "";
+          await carregarResultados(s);
+        };
+        sugestoesEl.appendChild(tag);
+      }
+    } catch {
+      // ok sem sugestões
+    }
+  }
+
+  let t = null;
+  buscaEl.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const q = buscaEl.value.trim();
+      await carregarSugestoes(q);
+      await carregarResultados(q);
+    }, 220);
+  });
+
+  // Init
+  tryShowEmailFromToken();
+  refreshCount();
 </script>
 
 </body>
