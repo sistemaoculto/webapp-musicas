@@ -81,7 +81,7 @@ const registerLimiter = makeRateLimiter({ windowMs: 30 * 60 * 1000, max: 15 });
 const COOKIE_NAME = "session";
 
 function setSessionCookie(res, token) {
-  const secure = true;     // Render usa https
+  const secure = true; // Render https
   const sameSite = "Lax";
   const maxAgeSec = 7 * 24 * 60 * 60;
 
@@ -174,7 +174,7 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// Resend email helpers
+// Resend helpers
 function sha256Hex(s) {
   return crypto.createHash("sha256").update(String(s)).digest("hex");
 }
@@ -354,13 +354,14 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 });
 
 // ===== ADMIN =====
-app.get("/api/admin/pending", authMiddleware, adminOnly, async (req, res) => {
+
+// NOVO: listar TODOS os usuários (pendentes + aprovados)
+app.get("/api/admin/users", authMiddleware, adminOnly, async (req, res) => {
   const r = await pool.query(
-    `SELECT id, name, email, created_at
+    `SELECT id, name, email, is_admin, is_super, is_approved, created_at
      FROM users
-     WHERE is_approved = FALSE
-     ORDER BY created_at ASC
-     LIMIT 200`
+     ORDER BY is_approved ASC, created_at DESC
+     LIMIT 500`
   );
   res.json(r.rows);
 });
@@ -373,16 +374,16 @@ app.post("/api/admin/approve/:id", authMiddleware, adminOnly, async (req, res) =
   const r = await pool.query(
     `UPDATE users
      SET is_approved = TRUE
-     WHERE id=$1 AND is_approved=FALSE
-     RETURNING id, name, email, is_super`,
+     WHERE id=$1
+     RETURNING id, name, email, is_super, is_approved`,
     [id]
   );
 
-  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado ou já aprovado" });
+  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado" });
   res.json({ ok: true, user: r.rows[0] });
 });
 
-// Aprovar como SUPER (aprovado + is_super true)
+// Aprovar como SUPER
 app.post("/api/admin/approve-super/:id", authMiddleware, adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
@@ -391,57 +392,56 @@ app.post("/api/admin/approve-super/:id", authMiddleware, adminOnly, async (req, 
     `UPDATE users
      SET is_approved = TRUE,
          is_super = TRUE
-     WHERE id=$1 AND is_approved=FALSE
-     RETURNING id, name, email, is_super`,
+     WHERE id=$1
+     RETURNING id, name, email, is_super, is_approved`,
     [id]
   );
 
-  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado ou já aprovado" });
+  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado" });
   res.json({ ok: true, user: r.rows[0] });
 });
 
-// Negar aprovação = deletar usuário (somente se NÃO for admin)
+// Negar = deletar (não pode deletar admin)
 app.post("/api/admin/deny/:id", authMiddleware, adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-  // Nunca deletar o admin principal
   const check = await pool.query(`SELECT email, is_admin FROM users WHERE id=$1`, [id]);
   if (check.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado" });
   if (check.rows[0].is_admin) return res.status(400).json({ error: "Não é permitido deletar um administrador." });
 
-  // Apaga usuário. Tokens de aprovação são removidos por CASCADE.
-  // Songs: created_by fica NULL por ON DELETE SET NULL.
   await pool.query(`DELETE FROM users WHERE id=$1`, [id]);
   res.json({ ok: true });
 });
 
-// Admin pode marcar/desmarcar SUPER em usuário já existente (sem virar admin)
+// Marcar/Desmarcar SUPER (para aprovados também)
 app.post("/api/admin/set-super/:id", authMiddleware, adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   const isSuper = !!req.body?.is_super;
 
   if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-  // Não faz sentido mexer no admin principal por aqui (mas pode, se quiser).
+  const check = await pool.query(`SELECT is_admin FROM users WHERE id=$1`, [id]);
+  if (check.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado" });
+  if (check.rows[0].is_admin) return res.status(400).json({ error: "Administrador não deve ser tratado como SUPER." });
+
   const r = await pool.query(
     `UPDATE users
      SET is_super = $2
      WHERE id=$1
-     RETURNING id, name, email, is_super, is_admin`,
+     RETURNING id, name, email, is_super, is_admin, is_approved`,
     [id, isSuper]
   );
-  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado" });
 
   res.json({ ok: true, user: r.rows[0] });
 });
 
-// Aprovar por TOKEN (link do email) - expira e é de uso único
+// Aprovar por TOKEN
 app.post("/api/admin/approve-token/:token", authMiddleware, adminOnly, async (req, res) => {
   const raw = String(req.params.token || "").trim();
   if (raw.length < 20) return res.status(400).json({ error: "Token inválido" });
 
-  const hash = sha256Hex(raw);
+  const hash = crypto.createHash("sha256").update(String(raw)).digest("hex");
 
   const t = await pool.query(
     `SELECT id, user_id, expires_at, used_at
@@ -463,7 +463,7 @@ app.post("/api/admin/approve-token/:token", authMiddleware, adminOnly, async (re
   res.json({ ok: true });
 });
 
-// ===== SONGS (COMPARTILHADO) =====
+// ===== SONGS =====
 function normalizeSongInput(body) {
   const cantor = clampStr(body?.cantor, 120);
   const musica = clampStr(body?.musica, 160);
@@ -527,7 +527,6 @@ app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// List/search global
 app.get("/api/songs", authMiddleware, async (req, res) => {
   const q = String(req.query.q || "").trim();
   try {
@@ -556,7 +555,6 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// Paginação A-Z
 app.get("/api/songs/page", authMiddleware, async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
@@ -581,7 +579,6 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
   }
 });
 
-// Suggest
 app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json([]);
@@ -608,7 +605,6 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   }
 });
 
-// PDF (sem tom)
 app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
