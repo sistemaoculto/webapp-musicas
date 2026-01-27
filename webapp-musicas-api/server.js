@@ -27,7 +27,11 @@ const pool = new Pool({
 });
 
 function signToken(user) {
-  return jwt.sign({ uid: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign(
+    { uid: user.id, email: user.email, name: user.name || "" },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 }
 
 function authMiddleware(req, res, next) {
@@ -56,17 +60,21 @@ app.get("/health", async (req, res) => {
 
 // ===== AUTH =====
 app.post("/api/register", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios" });
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+  }
 
   try {
     const hash = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
-      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email",
-      [email.toLowerCase(), hash]
+      "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email",
+      [name.trim(), email.toLowerCase(), hash]
     );
+
     const user = result.rows[0];
-    res.json({ token: signToken(user), email: user.email });
+    res.json({ token: signToken(user), name: user.name, email: user.email });
   } catch (e) {
     const msg = String(e.message || "");
     if (msg.includes("duplicate key") || msg.includes("users_email_key")) {
@@ -78,20 +86,23 @@ app.post("/api/register", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email e senha são obrigatórios" });
+  }
 
   try {
     const result = await pool.query(
-      "SELECT id, email, password_hash FROM users WHERE email=$1",
+      "SELECT id, name, email, password_hash FROM users WHERE email=$1",
       [email.toLowerCase()]
     );
+
     const user = result.rows[0];
     if (!user) return res.status(401).json({ error: "Email ou senha inválidos" });
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Email ou senha inválidos" });
 
-    res.json({ token: signToken(user), email: user.email });
+    res.json({ token: signToken(user), name: user.name || "", email: user.email });
   } catch (e) {
     res.status(500).json({ error: String(e.message || "") });
   }
@@ -117,7 +128,7 @@ app.post("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE (editar)
+// UPDATE
 app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   const id = Number(req.params.id);
   const { cantor, musica, tom, link } = req.body || {};
@@ -140,7 +151,7 @@ app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// LIST/SEARCH (para pesquisar)
+// LIST/SEARCH
 app.get("/api/songs", authMiddleware, async (req, res) => {
   const q = (req.query.q || "").toString().trim();
   try {
@@ -171,7 +182,7 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// PAGINADO + ALFABÉTICO (para tela MUSICAS)
+// PAGINADO + ALFABÉTICO
 app.get("/api/songs/page", authMiddleware, async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
@@ -184,6 +195,7 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
        WHERE user_id=$1`,
       [req.user.uid]
     );
+
     const total = totalR.rows[0]?.total || 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -196,19 +208,13 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
       [req.user.uid, limit, offset]
     );
 
-    res.json({
-      items: itemsR.rows,
-      total,
-      page,
-      limit,
-      totalPages
-    });
+    res.json({ items: itemsR.rows, total, page, limit, totalPages });
   } catch (e) {
     res.status(500).json({ error: String(e.message || "") });
   }
 });
 
-// SUGGEST (autocomplete)
+// SUGGEST
 app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   const q = (req.query.q || "").toString().trim();
   if (!q) return res.json([]);
@@ -235,7 +241,7 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   }
 });
 
-// PDF (todas as músicas, sem TOM)
+// PDF (sem TOM)
 app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
@@ -260,7 +266,6 @@ app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
     doc.fillColor("#000");
     doc.fontSize(11);
 
-    // Cabeçalho simples
     doc.font("Helvetica-Bold");
     doc.text("Cantor", 40, doc.y, { continued: true, width: 170 });
     doc.text("Música", 220, doc.y, { continued: true, width: 190 });
@@ -271,19 +276,11 @@ app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
     doc.moveDown(0.6);
 
     for (const s of r.rows) {
-      const cantor = s.cantor || "";
-      const musica = s.musica || "";
-      const link = s.link || "";
-
-      const yBefore = doc.y;
-
-      doc.text(cantor, 40, yBefore, { width: 170 });
-      doc.text(musica, 220, yBefore, { width: 190 });
-      doc.text(link, 420, yBefore, { width: 150, link: link || undefined, underline: !!link });
-
+      const y = doc.y;
+      doc.text(s.cantor || "", 40, y, { width: 170 });
+      doc.text(s.musica || "", 220, y, { width: 190 });
+      doc.text(s.link || "", 420, y, { width: 150, link: s.link || undefined, underline: !!s.link });
       doc.moveDown(0.6);
-
-      // Quebra de página
       if (doc.y > 760) doc.addPage();
     }
 
@@ -293,7 +290,7 @@ app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   }
 });
 
-// ====== STATIC SITE ======
+// ===== STATIC =====
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, "public");
