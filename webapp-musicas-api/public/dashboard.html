@@ -20,7 +20,6 @@
       --radius: 18px;
       --radius2: 14px;
     }
-
     *{ box-sizing:border-box; }
     body{
       margin:0;
@@ -32,7 +31,6 @@
         radial-gradient(900px 500px at 90% 20%, rgba(167,139,250,.20), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
     }
-
     .topbar{
       position: sticky;
       top:0;
@@ -41,7 +39,6 @@
       background: rgba(10, 15, 32, .55);
       border-bottom: 1px solid rgba(42,58,102,.6);
     }
-
     .topbar-inner{
       max-width: 1100px;
       margin: 0 auto;
@@ -51,14 +48,12 @@
       justify-content:space-between;
       gap:12px;
     }
-
     .brand{
       display:flex;
       align-items:center;
       gap:10px;
       min-width: 220px;
     }
-
     .pill{
       display:inline-flex;
       align-items:center;
@@ -69,7 +64,6 @@
       background: rgba(15,22,48,.45);
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
-
     .count{
       font-size: 12px;
       color: var(--muted);
@@ -78,7 +72,6 @@
       color: var(--text);
       font-size: 14px;
     }
-
     .nav{
       display:flex;
       gap:10px;
@@ -86,7 +79,6 @@
       justify-content:center;
       flex: 1;
     }
-
     .nav button{
       border:1px solid rgba(42,58,102,.7);
       background: rgba(15,22,48,.35);
@@ -107,7 +99,6 @@
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
       border-color: rgba(122,167,255,.85);
     }
-
     .userbox{
       display:flex;
       align-items:center;
@@ -149,13 +140,11 @@
       border-color: rgba(42,58,102,.8);
       background: rgba(15,22,48,.35);
     }
-
     .wrap{
       max-width: 1100px;
       margin: 0 auto;
       padding: 26px 18px 60px;
     }
-
     .hero{
       display:flex;
       align-items:flex-end;
@@ -171,15 +160,13 @@
     .hero p{
       margin: 6px 0 0;
       color: var(--muted);
-      max-width: 700px;
+      max-width: 800px;
     }
-
     .grid{
       display:grid;
       grid-template-columns: 1fr;
       gap:18px;
     }
-
     .card{
       border: 1px solid rgba(42,58,102,.8);
       background: rgba(15,22,48,.45);
@@ -187,11 +174,14 @@
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-
     .card-header{
       padding: 16px 18px;
       border-bottom: 1px solid rgba(42,58,102,.6);
       background: linear-gradient(135deg, rgba(122,167,255,.10), rgba(167,139,250,.08));
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
     }
     .card-header .title{
       font-weight: 800;
@@ -203,16 +193,13 @@
       color: var(--muted);
       font-size: 13px;
     }
-
     .card-body{
       padding: 18px;
     }
-
     .center{
       display:flex;
       justify-content:center;
     }
-
     .form{
       width: min(640px, 100%);
       display:grid;
@@ -222,7 +209,6 @@
       border:1px solid rgba(42,58,102,.7);
       background: rgba(10,15,32,.35);
     }
-
     .row2{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -233,14 +219,12 @@
       .brand{ min-width: 0; }
       .userbox{ min-width: 0; }
     }
-
     label{
       font-size: 12px;
       color: var(--muted);
       display:block;
       margin: 2px 0 6px;
     }
-
     input{
       width: 100%;
       padding: 12px 12px;
@@ -255,7 +239,6 @@
       border-color: rgba(122,167,255,.85);
       box-shadow: 0 0 0 4px rgba(122,167,255,.14);
     }
-
     .btn{
       display:inline-flex;
       align-items:center;
@@ -270,11 +253,23 @@
       letter-spacing:.2px;
       cursor:pointer;
       transition: .15s ease;
+      text-decoration:none;
     }
     .btn:hover{
       transform: translateY(-1px);
       box-shadow: 0 14px 40px rgba(0,0,0,.35);
       border-color: rgba(122,167,255,.95);
+    }
+    .btn.secondary{
+      border-color: rgba(42,58,102,.85);
+      background: rgba(15,22,48,.35);
+      font-weight: 700;
+    }
+    .btn.small{
+      padding: 8px 10px;
+      font-size: 12px;
+      border-radius: 10px;
+      font-weight: 700;
     }
 
     .msg{
@@ -286,9 +281,9 @@
     .msg.ok{ color: var(--ok); }
     .msg.err{ color: var(--err); }
 
-    /* Pesquisar */
+    /* Pesquisar / Músicas */
     .searchBox{
-      width: min(760px, 100%);
+      width: min(900px, 100%);
       display:grid;
       gap:10px;
       padding: 14px;
@@ -315,121 +310,214 @@
       border-color: rgba(122,167,255,.85);
       transform: translateY(-1px);
     }
-    ul{
-      margin: 0;
-      padding-left: 18px;
-      color: var(--text);
+
+    .list{
+      width: 100%;
+      border-radius: 14px;
+      overflow:hidden;
+      border:1px solid rgba(42,58,102,.6);
+      background: rgba(15,22,48,.35);
     }
-    li{
-      margin: 8px 0;
-      color: var(--text);
-      opacity: .95;
+    .row{
+      display:grid;
+      grid-template-columns: 1.2fr 1.2fr 1fr 120px;
+      gap:10px;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(42,58,102,.45);
+      align-items:center;
     }
-    a{ color: var(--accent); }
+    .row.header{
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(10,15,32,.35);
+      font-weight: 700;
+    }
+    .cell{
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cell a{ color: var(--accent); }
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .pagination{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-top: 10px;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pages{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .pagebtn{
+      padding: 7px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(42,58,102,.7);
+      background: rgba(15,22,48,.35);
+      color: var(--text);
+      cursor:pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition:.15s ease;
+    }
+    .pagebtn:hover{
+      border-color: rgba(122,167,255,.75);
+      transform: translateY(-1px);
+    }
+    .pagebtn.active{
+      border-color: rgba(122,167,255,.95);
+      background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
+    }
   </style>
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="pill count" title="Quantidade de músicas cadastradas">
-          🎵 <span>Total: <b id="count">0</b></span>
-        </div>
-      </div>
-
-      <nav class="nav">
-        <button id="navHome" class="active" type="button">HOME</button>
-        <button id="navSearch" type="button">PESQUISAR</button>
-      </nav>
-
-      <div class="userbox">
-        <div class="logged">
-          <div class="label">Logado como</div>
-          <div class="email" id="userEmail">—</div>
-        </div>
-        <button id="logoutBtn" class="logout" type="button">Sair</button>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="pill count" title="Quantidade de músicas cadastradas">
+        🎵 <span>Total: <b id="count">0</b></span>
       </div>
     </div>
-  </header>
 
-  <main class="wrap">
-    <section class="hero">
-      <div>
-        <h1>Músicas da Jhenny 🐈‍⬛</h1>
-        <p>Cadastre as músicas com cantor, tom e link. Use <b>PESQUISAR</b> para encontrar rápido com sugestões enquanto digita.</p>
+    <nav class="nav">
+      <button id="navHome" class="active" type="button">HOME</button>
+      <button id="navSearch" type="button">PESQUISAR</button>
+      <button id="navSongs" type="button">MUSICAS</button>
+    </nav>
+
+    <div class="userbox">
+      <div class="logged">
+        <div class="label">Logado como</div>
+        <div class="email" id="userEmail">—</div>
       </div>
-    </section>
+      <button id="logoutBtn" class="logout" type="button">Sair</button>
+    </div>
+  </div>
+</header>
 
-    <!-- HOME -->
-    <section id="viewHome" class="grid">
-      <div class="card">
-        <div class="card-header">
-          <p class="title">Cadastrar música</p>
-          <p class="subtitle">Preencha e salve — o formulário fica centralizado e bem limpo.</p>
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Músicas da Jhenny 🐈‍⬛</h1>
+      <p>
+        Cadastre no <b>HOME</b>. Pesquise com sugestões em <b>PESQUISAR</b>.
+        Veja a lista alfabética e gere PDF em <b>MUSICAS</b>.
+      </p>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="viewHome" class="grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <p class="title" id="homeTitle">Cadastrar música</p>
+          <p class="subtitle" id="homeSubtitle">Preencha e salve. Formulário centralizado e limpo.</p>
         </div>
+        <div class="actions">
+          <button id="cancelEditBtn" class="btn secondary small" type="button" style="display:none;">Cancelar edição</button>
+        </div>
+      </div>
 
-        <div class="card-body center">
-          <div class="form">
-            <div class="row2">
-              <div>
-                <label for="cantor">Cantor</label>
-                <input id="cantor" placeholder="Ex: Jorge & Mateus" />
-              </div>
-              <div>
-                <label for="musica">Música</label>
-                <input id="musica" placeholder="Ex: A Hora é Agora" />
-              </div>
+      <div class="card-body center">
+        <div class="form">
+          <!-- usado para edição -->
+          <input type="hidden" id="editId" value="" />
+
+          <div class="row2">
+            <div>
+              <label for="cantor">Cantor</label>
+              <input id="cantor" placeholder="Ex: Jorge & Mateus" />
             </div>
-
-            <div class="row2">
-              <div>
-                <label for="tom">Tom</label>
-                <input id="tom" placeholder="Ex: Am / C / D" />
-              </div>
-              <div>
-                <label for="link">Link</label>
-                <input id="link" placeholder="Cole o link aqui" />
-              </div>
+            <div>
+              <label for="musica">Música</label>
+              <input id="musica" placeholder="Ex: A Hora é Agora" />
             </div>
-
-            <button id="saveBtn" class="btn" type="button">Salvar</button>
-            <div id="msgHome" class="msg"></div>
           </div>
+
+          <div class="row2">
+            <div>
+              <label for="tom">Tom</label>
+              <input id="tom" placeholder="Ex: Am / C / D" />
+            </div>
+            <div>
+              <label for="link">Link</label>
+              <input id="link" placeholder="Cole o link aqui" />
+            </div>
+          </div>
+
+          <button id="saveBtn" class="btn" type="button">Salvar</button>
+          <div id="msgHome" class="msg"></div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- PESQUISAR -->
-    <section id="viewSearch" class="grid" style="display:none;">
-      <div class="card">
-        <div class="card-header">
+  <!-- PESQUISAR -->
+  <section id="viewSearch" class="grid" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div>
           <p class="title">Pesquisar</p>
-          <p class="subtitle">Digite cantor ou música. As sugestões aparecem conforme você digita.</p>
-        </div>
-        <div class="card-body center">
-          <div class="searchBox">
-            <div>
-              <label for="busca">Buscar</label>
-              <input id="busca" placeholder="Digite cantor ou música..." autocomplete="off"/>
-            </div>
-
-            <div>
-              <label>Sugestões</label>
-              <div id="sugestoes" class="suggestions"></div>
-            </div>
-
-            <div>
-              <label>Resultados</label>
-              <ul id="lista"></ul>
-            </div>
-
-            <div id="msgSearch" class="msg"></div>
-          </div>
+          <p class="subtitle">Digite cantor ou música. Clique em <b>Editar</b> para alterar.</p>
         </div>
       </div>
-    </section>
-  </main>
+
+      <div class="card-body center">
+        <div class="searchBox">
+          <div>
+            <label for="busca">Buscar</label>
+            <input id="busca" placeholder="Digite cantor ou música..." autocomplete="off"/>
+          </div>
+
+          <div>
+            <label>Sugestões</label>
+            <div id="sugestoes" class="suggestions"></div>
+          </div>
+
+          <div>
+            <label>Resultados</label>
+            <div class="list" id="searchList"></div>
+          </div>
+
+          <div id="msgSearch" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MUSICAS -->
+  <section id="viewSongs" class="grid" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <p class="title">Músicas (A–Z)</p>
+          <p class="subtitle">Mostra 20 por página. Você pode gerar um PDF com todas as músicas.</p>
+        </div>
+        <div class="actions">
+          <button id="pdfBtn" class="btn small" type="button">Gerar PDF</button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="list" id="songsList"></div>
+        <div class="pagination" id="pager"></div>
+        <div id="msgSongs" class="msg"></div>
+      </div>
+    </div>
+  </section>
+</main>
 
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
@@ -437,34 +525,47 @@
   const token = localStorage.getItem("token");
   if (!token) window.location.href = "index.html";
 
-  // Navbar / views
+  // Tabs
   const navHome = document.getElementById("navHome");
   const navSearch = document.getElementById("navSearch");
+  const navSongs = document.getElementById("navSongs");
+
   const viewHome = document.getElementById("viewHome");
   const viewSearch = document.getElementById("viewSearch");
+  const viewSongs = document.getElementById("viewSongs");
 
   function setActive(tab) {
+    navHome.classList.remove("active");
+    navSearch.classList.remove("active");
+    navSongs.classList.remove("active");
+
+    viewHome.style.display = "none";
+    viewSearch.style.display = "none";
+    viewSongs.style.display = "none";
+
     if (tab === "home") {
       navHome.classList.add("active");
-      navSearch.classList.remove("active");
       viewHome.style.display = "";
-      viewSearch.style.display = "none";
       document.title = "Home";
-    } else {
+    } else if (tab === "search") {
       navSearch.classList.add("active");
-      navHome.classList.remove("active");
       viewSearch.style.display = "";
-      viewHome.style.display = "none";
       document.title = "Pesquisar";
+    } else {
+      navSongs.classList.add("active");
+      viewSongs.style.display = "";
+      document.title = "Músicas";
     }
   }
 
   navHome.onclick = () => setActive("home");
   navSearch.onclick = () => setActive("search");
+  navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
 
-  // UI elements
+  // UI
   const userEmailEl = document.getElementById("userEmail");
   const countEl = document.getElementById("count");
+  const logoutBtn = document.getElementById("logoutBtn");
 
   const cantorEl = document.getElementById("cantor");
   const musicaEl = document.getElementById("musica");
@@ -472,13 +573,27 @@
   const linkEl = document.getElementById("link");
   const saveBtn = document.getElementById("saveBtn");
   const msgHome = document.getElementById("msgHome");
+  const editIdEl = document.getElementById("editId");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+  const homeTitle = document.getElementById("homeTitle");
+  const homeSubtitle = document.getElementById("homeSubtitle");
 
   const buscaEl = document.getElementById("busca");
   const sugestoesEl = document.getElementById("sugestoes");
-  const listaEl = document.getElementById("lista");
+  const searchListEl = document.getElementById("searchList");
   const msgSearch = document.getElementById("msgSearch");
 
-  const logoutBtn = document.getElementById("logoutBtn");
+  const songsListEl = document.getElementById("songsList");
+  const pagerEl = document.getElementById("pager");
+  const msgSongs = document.getElementById("msgSongs");
+  const pdfBtn = document.getElementById("pdfBtn");
+
+  function setMsg(el, text, type) {
+    el.classList.remove("ok", "err");
+    if (type === "ok") el.classList.add("ok");
+    if (type === "err") el.classList.add("err");
+    el.textContent = text || "";
+  }
 
   async function api(path, opts = {}) {
     const r = await fetch(`${API_BASE}${path}`, {
@@ -489,104 +604,160 @@
         ...(opts.headers || {})
       }
     });
-
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || "Erro na API");
     return data;
   }
 
-  function setMsg(el, text, type) {
-    el.classList.remove("ok", "err");
-    if (type === "ok") el.classList.add("ok");
-    if (type === "err") el.classList.add("err");
-    el.textContent = text || "";
-  }
-
-  // Logout
   logoutBtn.onclick = () => {
     localStorage.removeItem("token");
     window.location.href = "index.html";
   };
 
-  // Load count + (optional) results
-  async function refreshCount() {
-    try {
-      const items = await api("/api/songs", { method: "GET" });
-      countEl.textContent = String(items.length);
-      return items;
-    } catch (e) {
-      // se token expirou
-      if ((e.message || "").toLowerCase().includes("token")) {
-        localStorage.removeItem("token");
-        window.location.href = "index.html";
-      }
-      throw e;
-    }
-  }
-
-  // Try to show user email (optional: decode JWT payload)
+  // Mostrar email pelo token (sem chamar API)
   function tryShowEmailFromToken() {
     try {
       const parts = token.split(".");
       if (parts.length !== 3) return;
       const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
       if (payload && payload.email) userEmailEl.textContent = payload.email;
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
-  // HOME save
+  // Count (usa listagem simples e conta o tamanho)
+  async function refreshCount() {
+    const items = await api("/api/songs", { method: "GET" });
+    countEl.textContent = String(items.length);
+  }
+
+  // ===== HOME: CREATE/UPDATE =====
+  function enterEditMode(song) {
+    setActive("home");
+    editIdEl.value = String(song.id);
+
+    cantorEl.value = song.cantor || "";
+    musicaEl.value = song.musica || "";
+    tomEl.value = song.tom || "";
+    linkEl.value = song.link || "";
+
+    saveBtn.textContent = "Salvar alterações";
+    cancelEditBtn.style.display = "";
+    homeTitle.textContent = "Editar música";
+    homeSubtitle.textContent = "Altere os campos e clique em “Salvar alterações”.";
+    setMsg(msgHome, "", "");
+  }
+
+  function exitEditMode() {
+    editIdEl.value = "";
+    cantorEl.value = "";
+    musicaEl.value = "";
+    tomEl.value = "";
+    linkEl.value = "";
+
+    saveBtn.textContent = "Salvar";
+    cancelEditBtn.style.display = "none";
+    homeTitle.textContent = "Cadastrar música";
+    homeSubtitle.textContent = "Preencha e salve. Formulário centralizado e limpo.";
+    setMsg(msgHome, "", "");
+  }
+
+  cancelEditBtn.onclick = exitEditMode;
+
   saveBtn.onclick = async () => {
+    const cantor = cantorEl.value.trim();
+    const musica = musicaEl.value.trim();
+
+    if (!cantor || !musica) {
+      setMsg(msgHome, "❌ Preencha cantor e música.", "err");
+      return;
+    }
+
     setMsg(msgHome, "Salvando...", "");
     try {
-      await api("/api/songs", {
-        method: "POST",
-        body: JSON.stringify({
-          cantor: cantorEl.value.trim(),
-          musica: musicaEl.value.trim(),
-          tom: tomEl.value.trim(),
-          link: linkEl.value.trim()
-        })
-      });
+      const payload = {
+        cantor,
+        musica,
+        tom: tomEl.value.trim(),
+        link: linkEl.value.trim()
+      };
 
-      setMsg(msgHome, "✅ Música cadastrada!", "ok");
-      cantorEl.value = "";
-      musicaEl.value = "";
-      tomEl.value = "";
-      linkEl.value = "";
+      const editId = editIdEl.value.trim();
+      if (editId) {
+        await api(`/api/songs/${encodeURIComponent(editId)}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        setMsg(msgHome, "✅ Alterações salvas!", "ok");
+        exitEditMode();
+      } else {
+        await api("/api/songs", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        setMsg(msgHome, "✅ Música cadastrada!", "ok");
+        cantorEl.value = "";
+        musicaEl.value = "";
+        tomEl.value = "";
+        linkEl.value = "";
+      }
 
       await refreshCount();
+
+      // Se estiver na aba músicas, atualiza página 1 (opcional)
+      if (viewSongs.style.display !== "none") {
+        await loadSongsPage(1);
+      }
     } catch (e) {
       setMsg(msgHome, "❌ " + e.message, "err");
     }
   };
 
-  // SEARCH
+  // ===== PESQUISAR =====
+  function renderSearchHeader() {
+    searchListEl.innerHTML = `
+      <div class="row header">
+        <div class="cell">Cantor</div>
+        <div class="cell">Música</div>
+        <div class="cell">Link</div>
+        <div class="cell" style="text-align:right;">Ações</div>
+      </div>
+    `;
+  }
+
+  function appendSearchRow(song) {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const linkHtml = song.link ? `<a href="${song.link}" target="_blank">abrir</a>` : "-";
+
+    row.innerHTML = `
+      <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
+      <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
+      <div class="cell" title="${song.link || ""}">${linkHtml}</div>
+      <div class="actions">
+        <button class="btn secondary small" type="button" data-edit="${song.id}">Editar</button>
+      </div>
+    `;
+
+    row.querySelector("[data-edit]").onclick = () => enterEditMode(song);
+    searchListEl.appendChild(row);
+  }
+
   async function carregarResultados(q = "") {
-    msgSearch.textContent = "";
-    listaEl.innerHTML = "<li>Carregando...</li>";
+    setMsg(msgSearch, "", "");
+    renderSearchHeader();
 
-    try {
-      const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
+    const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
 
-      if (!items.length) {
-        listaEl.innerHTML = "<li>Nenhuma música encontrada</li>";
-        return;
-      }
-
-      listaEl.innerHTML = "";
-      for (const s of items) {
-        const li = document.createElement("li");
-        li.innerHTML =
-          `<strong>${s.cantor}</strong> - ${s.musica} (${s.tom || "-"})` +
-          (s.link ? ` — <a href="${s.link}" target="_blank">link</a>` : "");
-        listaEl.appendChild(li);
-      }
-    } catch (e) {
-      listaEl.innerHTML = "<li>Erro ao buscar</li>";
-      msgSearch.textContent = "❌ " + e.message;
+    if (!items.length) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhuma música encontrada</div>`;
+      searchListEl.appendChild(row);
+      return;
     }
+
+    for (const s of items) appendSearchRow(s);
   }
 
   async function carregarSugestoes(q) {
@@ -608,9 +779,7 @@
         };
         sugestoesEl.appendChild(tag);
       }
-    } catch {
-      // ok sem sugestões
-    }
+    } catch {}
   }
 
   let t = null;
@@ -623,9 +792,147 @@
     }, 220);
   });
 
+  // ===== MUSICAS: paginação A-Z =====
+  function renderSongsHeader() {
+    songsListEl.innerHTML = `
+      <div class="row header">
+        <div class="cell">Cantor</div>
+        <div class="cell">Música</div>
+        <div class="cell">Link</div>
+        <div class="cell" style="text-align:right;">Ações</div>
+      </div>
+    `;
+  }
+
+  function appendSongsRow(song) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const linkHtml = song.link ? `<a href="${song.link}" target="_blank">abrir</a>` : "-";
+
+    row.innerHTML = `
+      <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
+      <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
+      <div class="cell" title="${song.link || ""}">${linkHtml}</div>
+      <div class="actions">
+        <button class="btn secondary small" type="button">Editar</button>
+      </div>
+    `;
+
+    row.querySelector("button").onclick = () => enterEditMode(song);
+    songsListEl.appendChild(row);
+  }
+
+  function renderPager({ page, totalPages, total }) {
+    pagerEl.innerHTML = "";
+
+    const left = document.createElement("div");
+    left.textContent = `Total: ${total} • Página ${page} de ${totalPages}`;
+
+    const right = document.createElement("div");
+    right.className = "pages";
+
+    const prev = document.createElement("button");
+    prev.className = "pagebtn";
+    prev.textContent = "◀";
+    prev.disabled = page <= 1;
+    prev.style.opacity = prev.disabled ? ".5" : "1";
+    prev.onclick = async () => loadSongsPage(page - 1);
+
+    const next = document.createElement("button");
+    next.className = "pagebtn";
+    next.textContent = "▶";
+    next.disabled = page >= totalPages;
+    next.style.opacity = next.disabled ? ".5" : "1";
+    next.onclick = async () => loadSongsPage(page + 1);
+
+    right.appendChild(prev);
+
+    // mostra até 7 botões de página
+    const start = Math.max(1, page - 3);
+    const end = Math.min(totalPages, start + 6);
+
+    for (let p = start; p <= end; p++) {
+      const b = document.createElement("button");
+      b.className = "pagebtn" + (p === page ? " active" : "");
+      b.textContent = String(p);
+      b.onclick = async () => loadSongsPage(p);
+      right.appendChild(b);
+    }
+
+    right.appendChild(next);
+
+    pagerEl.appendChild(left);
+    pagerEl.appendChild(right);
+  }
+
+  async function loadSongsPage(page) {
+    setMsg(msgSongs, "", "");
+    renderSongsHeader();
+    const loadingRow = document.createElement("div");
+    loadingRow.className = "row";
+    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
+    songsListEl.appendChild(loadingRow);
+
+    try {
+      const data = await api(`/api/songs/page?page=${encodeURIComponent(page)}&limit=20`, { method: "GET" });
+      renderSongsHeader();
+
+      if (!data.items || data.items.length === 0) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhuma música cadastrada</div>`;
+        songsListEl.appendChild(row);
+      } else {
+        for (const s of data.items) appendSongsRow(s);
+      }
+
+      renderPager(data);
+    } catch (e) {
+      renderSongsHeader();
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar</div>`;
+      songsListEl.appendChild(row);
+      setMsg(msgSongs, "❌ " + e.message, "err");
+    }
+  }
+
+  // PDF download
+  pdfBtn.onclick = async () => {
+    setMsg(msgSongs, "Gerando PDF...", "");
+    try {
+      const r = await fetch(`${API_BASE}/api/songs/pdf`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data.error || "Erro ao gerar PDF");
+      }
+
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "musicas.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+      setMsg(msgSongs, "✅ PDF gerado!", "ok");
+    } catch (e) {
+      setMsg(msgSongs, "❌ " + e.message, "err");
+    }
+  };
+
   // Init
   tryShowEmailFromToken();
   refreshCount();
+  // prepara a listagem da busca (vazia)
+  renderSearchHeader();
 </script>
 
 </body>
