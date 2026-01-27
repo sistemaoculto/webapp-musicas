@@ -2,139 +2,202 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Criar conta</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Criar Conta</title>
   <style>
     :root{
       --bg1:#0b1020; --bg2:#101a33;
       --text:#eaf0ff; --muted:#a9b7e6;
-      --shadow: 0 18px 55px rgba(0,0,0,.55);
-      --radius: 18px;
-      --ok:#38d39f; --err:#ff6b6b;
+      --accent:#7aa7ff; --ok:#38d39f; --err:#ff6b6b;
+      --shadow:0 18px 55px rgba(0,0,0,.55);
+      --radius:18px;
+      --safeTop: env(safe-area-inset-top, 0px);
+      --safeBottom: env(safe-area-inset-bottom, 0px);
+      --safeLeft: env(safe-area-inset-left, 0px);
+      --safeRight: env(safe-area-inset-right, 0px);
     }
-    *{box-sizing:border-box;}
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
     body{
-      margin:0; min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--text);
       background:
         radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,.25), transparent 60%),
         radial-gradient(900px 500px at 90% 20%, rgba(167,139,250,.20), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
+      padding: calc(18px + var(--safeTop)) calc(14px + var(--safeRight)) calc(20px + var(--safeBottom)) calc(14px + var(--safeLeft));
       display:flex; align-items:center; justify-content:center;
-      padding: 24px 14px;
     }
+    input, button { font-size:16px; }
+
+    .wrap{ width:min(560px, 100%); }
+    .hero{ margin-bottom:14px; }
+    .hero h1{ margin:0; font-size:28px; }
+    .hero p{ margin:6px 0 0; color:var(--muted); }
+
     .card{
-      width: min(520px, 100%);
-      border: 1px solid rgba(42,58,102,.8);
+      border:1px solid rgba(42,58,102,.8);
       background: rgba(15,22,48,.45);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .header{
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(42,58,102,.6);
+    .card-h{
+      padding:16px;
+      border-bottom:1px solid rgba(42,58,102,.6);
       background: linear-gradient(135deg, rgba(122,167,255,.10), rgba(167,139,250,.08));
+      font-weight:800;
     }
-    .header h1{ margin:0; font-size: 22px; }
-    .header p{ margin:6px 0 0; color:var(--muted); font-size:13px; }
-    .body{ padding: 18px; }
-    label{ font-size:12px; color:var(--muted); display:block; margin: 8px 0 6px; }
+    .card-b{ padding:16px; }
+
+    label{ display:block; font-size:12px; color:var(--muted); margin:4px 0 6px; }
     input{
       width:100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(42,58,102,.85);
+      padding:12px;
+      border-radius:12px;
+      border:1px solid rgba(42,58,102,.85);
       background: rgba(15,22,48,.55);
-      color: var(--text);
+      color:var(--text);
       outline:none;
+      transition:.15s;
     }
+    input:focus{ border-color: rgba(122,167,255,.85); box-shadow:0 0 0 4px rgba(122,167,255,.14); }
+
+    .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 680px){ .row2{ grid-template-columns: 1fr; } }
+
     .btn{
       width:100%;
-      margin-top: 14px;
-      padding: 12px 14px;
-      border-radius: 12px;
+      margin-top:12px;
+      min-height:44px;
+      border-radius:12px;
       border:1px solid rgba(122,167,255,.75);
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
-      color: var(--text);
-      font-weight: 800;
+      color:var(--text);
+      font-weight:800;
       cursor:pointer;
+      transition:.15s;
     }
-    .msg{ margin-top:10px; font-size:13px; color:var(--muted); min-height:18px; }
-    .msg.ok{ color: var(--ok); }
-    .msg.err{ color: var(--err); }
-    .footer{ padding: 14px 18px 18px; color:var(--muted); font-size:13px; }
-    a{ color:#7aa7ff; text-decoration:none; }
-    a:hover{ text-decoration:underline; }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 14px 40px rgba(0,0,0,.35); border-color: rgba(122,167,255,.95); }
+    .msg{ margin:10px 0 0; min-height:18px; color:var(--muted); font-size:13px; }
+    .msg.ok{ color:var(--ok); } .msg.err{ color:var(--err); }
+
+    .foot{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .link{ color: var(--accent); text-decoration:none; font-weight:700; }
   </style>
 </head>
 <body>
-
-  <div class="card">
-    <div class="header">
+  <div class="wrap">
+    <div class="hero">
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>Cadastro (precisa de aprovação do admin)</p>
+      <p>Crie sua conta. O admin aprova o acesso.</p>
     </div>
 
-    <div class="body">
-      <label for="name">Nome</label>
-      <input id="name" placeholder="Seu nome" />
+    <div class="card">
+      <div class="card-h">Cadastro</div>
+      <div class="card-b">
+        <div class="row2">
+          <div>
+            <label for="name">Nome</label>
+            <input id="name" autocomplete="name" placeholder="Seu nome">
+          </div>
+          <div>
+            <label for="email">E-mail</label>
+            <input id="email" type="email" autocomplete="email" placeholder="seuemail@exemplo.com">
+          </div>
+        </div>
 
-      <label for="email">Email</label>
-      <input id="email" type="email" placeholder="seuemail@exemplo.com" />
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label for="password">Senha</label>
+            <input id="password" type="password" autocomplete="new-password" placeholder="••••••••">
+          </div>
+          <div>
+            <label for="password2">Confirmar senha</label>
+            <input id="password2" type="password" autocomplete="new-password" placeholder="••••••••">
+          </div>
+        </div>
 
-      <label for="password">Senha</label>
-      <input id="password" type="password" placeholder="Mínimo 8 caracteres" />
+        <button id="registerBtn" class="btn" type="button">Criar conta</button>
+        <div id="msg" class="msg"></div>
 
-      <button id="registerBtn" class="btn" type="button">Cadastrar</button>
-      <div id="msg" class="msg"></div>
-    </div>
-
-    <div class="footer">
-      Já tem conta? <a href="index.html">Voltar para login</a>
+        <div class="foot">
+          <span>Já tem conta?</span>
+          <a class="link" href="index.html">Voltar para login</a>
+        </div>
+      </div>
     </div>
   </div>
 
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
-  const msgEl = document.getElementById("msg");
 
-  function setMsg(text, type){
+  const nameEl = document.getElementById("name");
+  const emailEl = document.getElementById("email");
+  const passEl = document.getElementById("password");
+  const pass2El = document.getElementById("password2");
+  const msgEl = document.getElementById("msg");
+  const btn = document.getElementById("registerBtn");
+
+  function setMsg(t, type){
     msgEl.classList.remove("ok","err");
-    if (type) msgEl.classList.add(type);
-    msgEl.textContent = text || "";
+    if(type==="ok") msgEl.classList.add("ok");
+    if(type==="err") msgEl.classList.add("err");
+    msgEl.textContent = t || "";
   }
 
-  document.getElementById("registerBtn").onclick = async () => {
-    setMsg("Enviando cadastro...", "");
-    try {
-      const name = document.getElementById("name").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
+  async function api(path, opts={}){
+    const r = await fetch(API_BASE + path, {
+      ...opts,
+      headers: { "Content-Type":"application/json", ...(opts.headers||{}) },
+      credentials: "include"
+    });
+    const data = await r.json().catch(()=> ({}));
+    if(!r.ok) throw new Error(data.error || "Erro na API");
+    return data;
+  }
 
-      const r = await fetch(`${API_BASE}/api/register`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name, email, password })
-      });
+  btn.onclick = async () => {
+    const name = nameEl.value.trim();
+    const email = emailEl.value.trim();
+    const password = passEl.value;
+    const password2 = pass2El.value;
 
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.error || "Falha no cadastro");
+    if(!name || !email || !password){
+      setMsg("❌ Preencha nome, e-mail e senha.", "err");
+      return;
+    }
+    if(password !== password2){
+      setMsg("❌ As senhas não conferem.", "err");
+      return;
+    }
+    if(password.length < 6){
+      setMsg("❌ Senha deve ter pelo menos 6 caracteres.", "err");
+      return;
+    }
 
-      if (data.pending) {
-        setMsg("✅ Cadastro criado! Aguarde aprovação do administrador.", "ok");
-        return;
-      }
-
-      // Se for admin, entra direto
-      window.location.href = "dashboard.html";
-    } catch (e) {
+    btn.disabled = true;
+    setMsg("Criando conta...", "");
+    try{
+      await api("/api/register", { method:"POST", body: JSON.stringify({ name, email, password }) });
+      setMsg("✅ Conta criada! Aguarde aprovação do admin.", "ok");
+      setTimeout(()=> window.location.href="index.html", 900);
+    }catch(e){
       setMsg("❌ " + e.message, "err");
+    }finally{
+      btn.disabled = false;
     }
   };
-</script>
 
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter") btn.click();
+  });
+</script>
 </body>
 </html>
