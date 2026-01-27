@@ -75,15 +75,29 @@
     .count{ font-size:12px; color:var(--muted); }
     .count b{ color:var(--text); font-size:14px; }
 
-    /* desktop nav */
-    .nav{
+    /* ===== NAV (SEPARADO) ===== */
+    .nav-desktop{
       display:flex;
       gap:10px;
       flex-wrap:wrap;
       justify-content:center;
       flex: 1;
     }
-    .nav button{
+
+    .nav-mobile{
+      display:flex;
+      justify-content:flex-start;
+      gap:8px;
+      flex-wrap:nowrap;
+      overflow:auto;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav-mobile::-webkit-scrollbar{ display:none; }
+    .nav-mobile button{ flex: 0 0 auto; }
+
+    .nav-desktop button,
+    .nav-mobile button{
       border:1px solid rgba(42,58,102,.7);
       background: rgba(15,22,48,.35);
       color: var(--text);
@@ -95,12 +109,14 @@
       white-space: nowrap;
       min-height:44px;
     }
-    .nav button:hover{
+    .nav-desktop button:hover,
+    .nav-mobile button:hover{
       transform: translateY(-1px);
       border-color: rgba(122,167,255,.65);
       box-shadow: 0 12px 35px rgba(0,0,0,.25);
     }
-    .nav button.active{
+    .nav-desktop button.active,
+    .nav-mobile button.active{
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
       border-color: rgba(122,167,255,.85);
     }
@@ -136,23 +152,12 @@
       background: rgba(15,22,48,.35);
     }
 
-    /* mobile nav (scroll horizontal) */
-    .mobile-nav{
-      display:none;
+    .mobile-nav-wrap{
+      display:none; /* desktop: escondido */
       padding: 0 calc(14px + var(--safeRight)) 12px calc(14px + var(--safeLeft));
       max-width:1100px;
       margin: 0 auto;
     }
-    .mobile-nav .nav{
-      justify-content:flex-start;
-      gap:8px;
-      flex-wrap:nowrap;
-      overflow:auto;
-      padding-bottom: 6px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .mobile-nav .nav::-webkit-scrollbar{ display:none; }
-    .mobile-nav .nav button{ flex: 0 0 auto; }
 
     .wrap{
       max-width:1100px;
@@ -338,10 +343,10 @@
 
     /* ===== Mobile ===== */
     @media (max-width: 820px){
-      .nav{ display:none; }          /* some nav desktop */
-      .mobile-nav{ display:block; }  /* mostra nav mobile SEM depender de clique */
+      .nav-desktop{ display:none; }          /* esconde só o desktop */
+      .mobile-nav-wrap{ display:block; }    /* mostra menu mobile */
       .userbox{ min-width:0; }
-      .userbox .logged .email{ display:none; } /* no mobile: só nome */
+      .userbox .logged .email{ display:none; }
       .wrap{ padding-top: 16px; }
       .topbar-inner{ align-items:flex-start; }
     }
@@ -370,9 +375,7 @@
       .row.admin{ grid-template-columns:1fr; }
     }
 
-    .bottom-safe{
-      height: var(--safeBottom);
-    }
+    .bottom-safe{ height: var(--safeBottom); }
   </style>
 </head>
 <body>
@@ -385,8 +388,8 @@
       </div>
     </div>
 
-    <!-- desktop nav -->
-    <nav class="nav" aria-label="Navegação principal">
+    <!-- MENU DESKTOP -->
+    <nav class="nav-desktop" aria-label="Navegação principal">
       <button id="navHome" class="active" type="button">HOME</button>
       <button id="navSearch" type="button">PESQUISAR</button>
       <button id="navSongs" type="button">MUSICAS</button>
@@ -403,9 +406,9 @@
     </div>
   </div>
 
-  <!-- mobile nav (AGORA SEM inline display:none) -->
-  <div class="mobile-nav" id="mobileNav">
-    <nav class="nav" aria-label="Navegação mobile">
+  <!-- MENU MOBILE (sempre visível no mobile) -->
+  <div class="mobile-nav-wrap">
+    <nav class="nav-mobile" aria-label="Navegação mobile">
       <button id="mNavHome" class="active" type="button">HOME</button>
       <button id="mNavSearch" type="button">PESQUISAR</button>
       <button id="mNavSongs" type="button">MUSICAS</button>
@@ -451,11 +454,11 @@
           <div class="row2">
             <div>
               <label for="tom">Tom</label>
-              <input id="tom" placeholder="Ex: +1 ou 1/2 o tom que vc usa para cantar" autocomplete="off" />
+              <input id="tom" placeholder="Ex: +1 ou + 1/2 " autocomplete="off" />
             </div>
             <div>
               <label for="link">Link</label>
-              <input id="link" placeholder="Cole o link do Youtube aqui (http/https)" autocomplete="off" inputmode="url"/>
+              <input id="link" placeholder="Cole o link do youtube aqui (http/https)" autocomplete="off" inputmode="url"/>
             </div>
           </div>
 
@@ -653,13 +656,11 @@
   }
 
   function wireNavButtons(){
-    // desktop
     navHome.onclick = () => setActive("home");
     navSearch.onclick = () => setActive("search");
     navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
     navAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
 
-    // mobile
     mNavHome.onclick = () => setActive("home");
     mNavSearch.onclick = () => setActive("search");
     mNavSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
@@ -677,7 +678,6 @@
       const badge = ME.is_admin ? " (ADMIN)" : (ME.is_super ? " (SUPER)" : "");
       userNameEl.textContent = (ME.name || ME.email || "—") + badge;
       userEmailEl.textContent = ME.name ? ME.email : "";
-
       if (ME.is_admin) { navAdmin.style.display = ""; mNavAdmin.style.display = ""; }
     } catch {
       window.location.href = "index.html";
@@ -689,7 +689,6 @@
     countEl.textContent = String(items.length);
   }
 
-  // HOME edit
   function enterEditMode(song) {
     setActive("home");
     editIdEl.value = String(song.id);
@@ -725,7 +724,6 @@
       setMsg(msgHome, "❌ Preencha cantor e música.", "err");
       return;
     }
-
     saveBtn.disabled = true;
     setMsg(msgHome, "Salvando...", "");
     try {
@@ -749,7 +747,6 @@
     }
   };
 
-  // SEARCH
   function renderSearchHeader() {
     searchListEl.innerHTML = `
       <div class="row header">
@@ -765,7 +762,6 @@
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-
     row.innerHTML = `
       <div class="cell"><b>Cantor:</b> ${song.cantor || ""}</div>
       <div class="cell"><b>Música:</b> ${song.musica || ""}</div>
@@ -819,7 +815,6 @@
     }, 220);
   });
 
-  // SONGS pagination
   function renderSongsHeader() {
     songsListEl.innerHTML = `
       <div class="row header">
@@ -835,7 +830,6 @@
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-
     row.innerHTML = `
       <div class="cell"><b>Cantor:</b> ${song.cantor || ""}</div>
       <div class="cell"><b>Música:</b> ${song.musica || ""}</div>
@@ -947,7 +941,6 @@
     }
   };
 
-  // ADMIN users
   function formatDate(iso) {
     try { return new Date(iso).toLocaleString("pt-BR"); } catch { return iso || ""; }
   }
@@ -1114,12 +1107,13 @@
     }
   }
 
-  // INIT
+  function renderSearchHeaderOnce() { renderSearchHeader(); }
+
   (async () => {
     wireNavButtons();
     await loadMeOrRedirect();
     await refreshCount();
-    renderSearchHeader();
+    renderSearchHeaderOnce();
     await approveFromUrlIfNeeded();
   })();
 </script>
