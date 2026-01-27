@@ -37,7 +37,7 @@
       padding-bottom: var(--safeBottom);
     }
 
-    /* evitar zoom iPhone: inputs 16px */
+    /* evitar zoom no iPhone */
     input, button { font-size: 16px; }
 
     .topbar{
@@ -53,7 +53,7 @@
     .topbar-inner{
       max-width: 1100px;
       margin: 0 auto;
-      padding: 12px calc(14px + var(--safeRight)) 12px calc(14px + var(--safeLeft));
+      padding: 12px calc(14px + var(--safeRight)) 10px calc(14px + var(--safeLeft));
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -93,6 +93,7 @@
       transition:.15s ease;
       font-weight:600;
       white-space: nowrap;
+      min-height:44px;
     }
     .nav button:hover{
       transform: translateY(-1px);
@@ -127,12 +128,31 @@
       transition: .15s ease;
       border:1px solid transparent;
       white-space: nowrap;
+      min-height:44px;
     }
     .logout:hover{
       color: var(--text);
       border-color: rgba(42,58,102,.8);
       background: rgba(15,22,48,.35);
     }
+
+    /* mobile nav (scroll horizontal) */
+    .mobile-nav{
+      display:none;
+      padding: 0 calc(14px + var(--safeRight)) 12px calc(14px + var(--safeLeft));
+      max-width:1100px;
+      margin: 0 auto;
+    }
+    .mobile-nav .nav{
+      justify-content:flex-start;
+      gap:8px;
+      flex-wrap:nowrap;
+      overflow:auto;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mobile-nav .nav::-webkit-scrollbar{ display:none; }
+    .mobile-nav .nav button{ flex: 0 0 auto; }
 
     .wrap{
       max-width:1100px;
@@ -216,7 +236,7 @@
       transition:.15s ease;
       text-decoration:none;
       white-space: nowrap;
-      min-height: 44px; /* toque */
+      min-height: 44px;
     }
     .btn:hover{
       transform: translateY(-1px);
@@ -269,9 +289,7 @@
       display:inline-flex;
       align-items:center;
     }
-    .tag:hover{ border-color: rgba(122,167,255,.85); transform: translateY(-1px); }
 
-    /* LIST: desktop tabela */
     .list{
       width:100%;
       border-radius:14px;
@@ -297,7 +315,6 @@
     .cell a{ color: var(--accent); }
     .actions{ display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
 
-    /* ADMIN: mais espaço */
     .row.admin{ grid-template-columns: 1fr 1.25fr 0.9fr 340px; }
 
     .badge{
@@ -319,48 +336,14 @@
 
     .hint{ margin-top:10px; color:var(--muted); font-size:12px; line-height:1.35; }
 
-    /* ===== Mobile Layout ===== */
-    .hamburger{
-      display:none;
-      border:1px solid rgba(42,58,102,.7);
-      background: rgba(15,22,48,.35);
-      color: var(--text);
-      padding:10px 12px;
-      border-radius: 12px;
-      cursor:pointer;
-      min-height:44px;
-      min-width:44px;
-    }
-    .mobile-nav{
-      display:none;
-      padding: 0 calc(14px + var(--safeRight)) 12px calc(14px + var(--safeLeft));
-      max-width:1100px;
-      margin: 0 auto;
-    }
-    .mobile-nav .nav{
-      justify-content:flex-start;
-      gap:8px;
-      flex-wrap:nowrap;
-      overflow:auto;
-      padding-bottom: 6px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .mobile-nav .nav::-webkit-scrollbar{ display:none; }
-    .mobile-nav .nav button{ flex: 0 0 auto; }
-
-    /* transformar tabelas em cards no mobile */
+    /* ===== Mobile ===== */
     @media (max-width: 820px){
-      .topbar-inner{
-        align-items:flex-start;
-        gap:10px;
-      }
       .nav{ display:none; }          /* some nav desktop */
-      .mobile-nav{ display:block; }  /* mostra nav mobile */
-      .hamburger{ display:inline-flex; align-items:center; justify-content:center; }
-      .brand .pill{ padding:8px 10px; }
+      .mobile-nav{ display:block; }  /* mostra nav mobile SEM depender de clique */
       .userbox{ min-width:0; }
       .userbox .logged .email{ display:none; } /* no mobile: só nome */
       .wrap{ padding-top: 16px; }
+      .topbar-inner{ align-items:flex-start; }
     }
 
     @media (max-width: 680px){
@@ -369,7 +352,7 @@
       .card-body{ padding:14px; }
     }
 
-    /* Lista vira "card" no celular */
+    /* Lista vira "cards" no mobile */
     @media (max-width: 820px){
       .list{ background: transparent; border:none; overflow: visible; }
       .row.header{ display:none; }
@@ -387,11 +370,9 @@
       .row.admin{ grid-template-columns:1fr; }
     }
 
-    /* barra fixa inferior opcional (iPhone/Android) */
     .bottom-safe{
       height: var(--safeBottom);
     }
-
   </style>
 </head>
 <body>
@@ -419,12 +400,11 @@
         <div class="email" id="userEmail">—</div>
       </div>
       <button id="logoutBtn" class="logout" type="button">Sair</button>
-      <button id="hamburger" class="hamburger" type="button" aria-label="Abrir menu">☰</button>
     </div>
   </div>
 
-  <!-- mobile nav (scroll horizontal) -->
-  <div class="mobile-nav" id="mobileNav" style="display:none;">
+  <!-- mobile nav (AGORA SEM inline display:none) -->
+  <div class="mobile-nav" id="mobileNav">
     <nav class="nav" aria-label="Navegação mobile">
       <button id="mNavHome" class="active" type="button">HOME</button>
       <button id="mNavSearch" type="button">PESQUISAR</button>
@@ -438,7 +418,7 @@
   <section class="hero">
     <div>
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>Compatível com mobile. Cadastro compartilhado. Edição: <b>Admin</b>, <b>SUPER</b> ou <b>Autor</b>.</p>
+      <p>Menu compatível com celular. Cadastro compartilhado. Edição: <b>Admin</b>, <b>SUPER</b> ou <b>Autor</b>.</p>
     </div>
   </section>
 
@@ -471,7 +451,7 @@
           <div class="row2">
             <div>
               <label for="tom">Tom</label>
-              <input id="tom" placeholder="Ex: +1 ou 1/2 ou -1 , é o tom que vc usa para cantar" autocomplete="off" />
+              <input id="tom" placeholder="Ex: +1 ou 1/2 o tom que vc usa para cantar" autocomplete="off" />
             </div>
             <div>
               <label for="link">Link</label>
@@ -576,8 +556,6 @@
   const navAdmin = document.getElementById("navAdmin");
 
   // Mobile nav
-  const hamburger = document.getElementById("hamburger");
-  const mobileNav = document.getElementById("mobileNav");
   const mNavHome = document.getElementById("mNavHome");
   const mNavSearch = document.getElementById("mNavSearch");
   const mNavSongs = document.getElementById("mNavSongs");
@@ -638,10 +616,6 @@
     return data;
   }
 
-  function isMobileMode() {
-    return window.matchMedia("(max-width: 820px)").matches;
-  }
-
   function syncNavActive(tab){
     const all = [navHome, navSearch, navSongs, navAdmin, mNavHome, mNavSearch, mNavSongs, mNavAdmin];
     all.forEach(b => b && b.classList.remove("active"));
@@ -674,11 +648,8 @@
       viewAdmin.style.display = "";
       document.title = "Admin";
     }
-
     syncNavActive(tab);
-
-    // no mobile, fecha o menu após navegar
-    if (isMobileMode()) mobileNav.style.display = "none";
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function wireNavButtons(){
@@ -693,14 +664,6 @@
     mNavSearch.onclick = () => setActive("search");
     mNavSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
     mNavAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
-
-    hamburger.onclick = () => {
-      mobileNav.style.display = (mobileNav.style.display === "none" || !mobileNav.style.display) ? "block" : "none";
-    };
-
-    window.addEventListener("resize", () => {
-      if (!isMobileMode()) mobileNav.style.display = "none";
-    });
   }
 
   logoutBtn.onclick = async () => {
@@ -739,8 +702,6 @@
     homeTitle.textContent = "Editar música";
     homeSubtitle.textContent = "Admin, SUPER ou autor podem editar.";
     setMsg(msgHome, "", "");
-    // mobile: scroll to form
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function exitEditMode() {
@@ -790,7 +751,6 @@
 
   // SEARCH
   function renderSearchHeader() {
-    // no mobile, header some via CSS
     searchListEl.innerHTML = `
       <div class="row header">
         <div class="cell">Cantor</div>
@@ -1046,9 +1006,8 @@
   function appendUserRow(u) {
     const row = document.createElement("div");
     row.className = "row admin";
-
-    const status = badgeForUser(u);
     const created = formatDate(u.created_at);
+    const status = badgeForUser(u);
 
     let actionsHtml = "";
     if (u.is_admin) {
@@ -1158,7 +1117,6 @@
   // INIT
   (async () => {
     wireNavButtons();
-    mobileNav.style.display = isMobileMode() ? "none" : "none";
     await loadMeOrRedirect();
     await refreshCount();
     renderSearchHeader();
