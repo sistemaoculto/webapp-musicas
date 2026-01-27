@@ -826,7 +826,7 @@ app.post("/api/lists/:id/songs", authMiddleware, async (req, res) => {
   if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem alterar listas." });
 
   const listId = Number(req.params.id);
-  const songId = Number(req.body?.songId);
+  const songId = Number(req.body?.songId ?? req.body?.song_id);
   if (!listId || Number.isNaN(listId)) return res.status(400).json({ error: "ID inválido" });
   if (!songId || Number.isNaN(songId)) return res.status(400).json({ error: "songId inválido" });
 
