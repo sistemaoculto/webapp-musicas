@@ -11,8 +11,8 @@
       --text:#eaf0ff;
       --muted:#a9b7e6;
       --accent:#7aa7ff;
-      --accent2:#a78bfa;
       --ok:#38d39f;
+      --warn:#ffd166;
       --err:#ff6b6b;
       --shadow: 0 18px 55px rgba(0,0,0,.55);
       --radius: 18px;
@@ -177,6 +177,7 @@
       cursor:pointer;
       transition:.15s ease;
       text-decoration:none;
+      white-space: nowrap;
     }
     .btn:hover{
       transform: translateY(-1px);
@@ -249,24 +250,26 @@
     .cell{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cell a{ color: var(--accent); }
     .actions{ display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
-    .pagination{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
-    .pages{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .pagebtn{
-      padding:7px 10px;
-      border-radius:10px;
-      border:1px solid rgba(42,58,102,.7);
-      background: rgba(15,22,48,.35);
-      color: var(--text);
-      cursor:pointer;
-      font-size:12px;
-      font-weight:700;
-      transition:.15s ease;
-    }
-    .pagebtn:hover{ border-color: rgba(122,167,255,.75); transform: translateY(-1px); }
-    .pagebtn.active{ border-color: rgba(122,167,255,.95); background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20)); }
 
-    /* ADMIN rows com 4 colunas, mas ações ocupam mais espaço */
-    .row.admin{ grid-template-columns: 1fr 1.2fr 0.8fr 260px; }
+    /* ADMIN: mais espaço para botões */
+    .row.admin{ grid-template-columns: 1fr 1.25fr 0.9fr 320px; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid rgba(42,58,102,.7);
+      background: rgba(10,15,32,.35);
+      color: var(--muted);
+      gap: 6px;
+    }
+    .badge.ok{ color: var(--ok); border-color: rgba(56,211,159,.45); }
+    .badge.warn{ color: var(--warn); border-color: rgba(255,209,102,.45); }
+    .badge.super{ color: #d6c7ff; border-color: rgba(167,139,250,.55); }
+    .badge.admin{ color: #7aa7ff; border-color: rgba(122,167,255,.55); }
+
     .hint{ margin-top:10px; color:var(--muted); font-size:12px; line-height:1.35; }
   </style>
 </head>
@@ -335,11 +338,11 @@
           <div class="row2">
             <div>
               <label for="tom">Tom</label>
-              <input id="tom" placeholder="Ex: +1 ou 1/1 ou -1 aqui é o tom que vc canta" />
+              <input id="tom" placeholder="Ex: +1 ou 1/2 ou -! o tom que vc usa" />
             </div>
             <div>
               <label for="link">Link</label>
-              <input id="link" placeholder="Cole o link aqui o link do karaoke (http/https)" />
+              <input id="link" placeholder="Cole o link aqui do karaoke que vc usa (http/https)" />
             </div>
           </div>
 
@@ -398,7 +401,7 @@
 
       <div class="card-body">
         <div class="list" id="songsList"></div>
-        <div class="pagination" id="pager"></div>
+        <div id="pager"></div>
         <div id="msgSongs" class="msg"></div>
       </div>
     </div>
@@ -409,16 +412,16 @@
     <div class="card">
       <div class="card-header">
         <div>
-          <p class="title">Admin • Aprovar / Negar / SUPER</p>
-          <p class="subtitle">Aprovar normal, aprovar como SUPER (pode editar tudo) ou negar (deletar usuário).</p>
+          <p class="title">Admin • Usuários (todos)</p>
+          <p class="subtitle">Aprovar/Negar e definir SUPER. SUPER edita músicas de qualquer autor, mas não aprova usuários.</p>
         </div>
         <div class="actions">
-          <button id="refreshPendingBtn" class="btn secondary small" type="button">Atualizar</button>
+          <button id="refreshUsersBtn" class="btn secondary small" type="button">Atualizar</button>
         </div>
       </div>
 
       <div class="card-body">
-        <div class="list" id="pendingList"></div>
+        <div class="list" id="usersList"></div>
         <div id="msgAdmin" class="msg"></div>
         <div class="hint">
           Link do e-mail aprova via token seguro e expira (24h): <b>?approve=TOKEN</b>
@@ -426,7 +429,6 @@
       </div>
     </div>
   </section>
-
 </main>
 
 <script>
@@ -469,14 +471,14 @@
 
   // SONGS
   const songsListEl = document.getElementById("songsList");
-  const pagerEl = document.getElementById("pager");
   const msgSongs = document.getElementById("msgSongs");
   const pdfBtn = document.getElementById("pdfBtn");
+  const pagerEl = document.getElementById("pager");
 
   // ADMIN
-  const pendingListEl = document.getElementById("pendingList");
+  const usersListEl = document.getElementById("usersList");
   const msgAdmin = document.getElementById("msgAdmin");
-  const refreshPendingBtn = document.getElementById("refreshPendingBtn");
+  const refreshUsersBtn = document.getElementById("refreshUsersBtn");
 
   let ME = null;
 
@@ -534,7 +536,7 @@
   navHome.onclick = () => setActive("home");
   navSearch.onclick = () => setActive("search");
   navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
-  navAdmin.onclick = async () => { setActive("admin"); await loadPending(); };
+  navAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
 
   logoutBtn.onclick = async () => {
     try { await fetch(`${API_BASE}/api/logout`, { method:"POST", credentials:"include" }); } catch {}
@@ -548,7 +550,7 @@
       userNameEl.textContent = (ME.name || ME.email || "—") + badge;
       userEmailEl.textContent = ME.name ? ME.email : "";
       if (ME.is_admin) navAdmin.style.display = "";
-    } catch (e) {
+    } catch {
       window.location.href = "index.html";
     }
   }
@@ -558,37 +560,32 @@
     countEl.textContent = String(items.length);
   }
 
-  // HOME: edit
+  // HOME edit
   function enterEditMode(song) {
     setActive("home");
     editIdEl.value = String(song.id);
-
     cantorEl.value = song.cantor || "";
     musicaEl.value = song.musica || "";
     tomEl.value = song.tom || "";
     linkEl.value = song.link || "";
-
     saveBtn.textContent = "Salvar alterações";
     cancelEditBtn.style.display = "";
     homeTitle.textContent = "Editar música";
     homeSubtitle.textContent = "Admin, SUPER ou autor podem editar.";
     setMsg(msgHome, "", "");
   }
-
   function exitEditMode() {
     editIdEl.value = "";
     cantorEl.value = "";
     musicaEl.value = "";
     tomEl.value = "";
     linkEl.value = "";
-
     saveBtn.textContent = "Salvar";
     cancelEditBtn.style.display = "none";
     homeTitle.textContent = "Cadastrar música";
     homeSubtitle.textContent = "Formulário centralizado.";
     setMsg(msgHome, "", "");
   }
-
   cancelEditBtn.onclick = exitEditMode;
 
   saveBtn.onclick = async () => {
@@ -602,35 +599,20 @@
 
     setMsg(msgHome, "Salvando...", "");
     try {
-      const payloadSong = {
-        cantor,
-        musica,
-        tom: tomEl.value.trim(),
-        link: linkEl.value.trim()
-      };
-
+      const payloadSong = { cantor, musica, tom: tomEl.value.trim(), link: linkEl.value.trim() };
       const editId = editIdEl.value.trim();
+
       if (editId) {
-        await api(`/api/songs/${encodeURIComponent(editId)}`, {
-          method: "PUT",
-          body: JSON.stringify(payloadSong)
-        });
+        await api(`/api/songs/${encodeURIComponent(editId)}`, { method: "PUT", body: JSON.stringify(payloadSong) });
         setMsg(msgHome, "✅ Alterações salvas!", "ok");
         exitEditMode();
       } else {
-        await api("/api/songs", {
-          method: "POST",
-          body: JSON.stringify(payloadSong)
-        });
+        await api("/api/songs", { method: "POST", body: JSON.stringify(payloadSong) });
         setMsg(msgHome, "✅ Música cadastrada!", "ok");
-        cantorEl.value = "";
-        musicaEl.value = "";
-        tomEl.value = "";
-        linkEl.value = "";
+        cantorEl.value = ""; musicaEl.value = ""; tomEl.value = ""; linkEl.value = "";
       }
 
       await refreshCount();
-      if (viewSongs.style.display !== "none") await loadSongsPage(1);
     } catch (e) {
       setMsg(msgHome, "❌ " + e.message, "err");
     }
@@ -647,12 +629,10 @@
       </div>
     `;
   }
-
   function appendSearchRow(song) {
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-
     row.innerHTML = `
       <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
       <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
@@ -661,17 +641,13 @@
         <button class="btn secondary small" type="button" data-edit="${song.id}">Editar</button>
       </div>
     `;
-
     row.querySelector("[data-edit]").onclick = () => enterEditMode(song);
     searchListEl.appendChild(row);
   }
-
   async function carregarResultados(q = "") {
     setMsg(msgSearch, "", "");
     renderSearchHeader();
-
     const items = await api(`/api/songs${q ? `?q=${encodeURIComponent(q)}` : ""}`, { method: "GET" });
-
     if (!items.length) {
       const row = document.createElement("div");
       row.className = "row";
@@ -679,32 +655,23 @@
       searchListEl.appendChild(row);
       return;
     }
-
     for (const s of items) appendSearchRow(s);
   }
-
   async function carregarSugestoes(q) {
     sugestoesEl.innerHTML = "";
     if (!q) return;
-
     try {
       const sug = await api(`/api/songs/suggest?q=${encodeURIComponent(q)}`, { method: "GET" });
       if (!Array.isArray(sug) || sug.length === 0) return;
-
       for (const s of sug) {
         const tag = document.createElement("div");
         tag.className = "tag";
         tag.textContent = s;
-        tag.onclick = async () => {
-          buscaEl.value = s;
-          sugestoesEl.innerHTML = "";
-          await carregarResultados(s);
-        };
+        tag.onclick = async () => { buscaEl.value = s; sugestoesEl.innerHTML = ""; await carregarResultados(s); };
         sugestoesEl.appendChild(tag);
       }
     } catch {}
   }
-
   let t = null;
   buscaEl.addEventListener("input", () => {
     clearTimeout(t);
@@ -726,12 +693,10 @@
       </div>
     `;
   }
-
   function appendSongsRow(song) {
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-
     row.innerHTML = `
       <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
       <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
@@ -743,77 +708,75 @@
     row.querySelector("button").onclick = () => enterEditMode(song);
     songsListEl.appendChild(row);
   }
-
   function renderPager({ page, totalPages, total }) {
     pagerEl.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.style.display = "flex";
+    wrap.style.justifyContent = "space-between";
+    wrap.style.gap = "12px";
+    wrap.style.flexWrap = "wrap";
+    wrap.style.color = "var(--muted)";
+    wrap.style.fontSize = "12px";
+    wrap.style.marginTop = "10px";
 
     const left = document.createElement("div");
     left.textContent = `Total: ${total} • Página ${page} de ${totalPages}`;
 
     const right = document.createElement("div");
-    right.className = "pages";
+    right.style.display = "flex";
+    right.style.gap = "8px";
+    right.style.flexWrap = "wrap";
+    right.style.alignItems = "center";
 
-    const prev = document.createElement("button");
-    prev.className = "pagebtn";
-    prev.textContent = "◀";
-    prev.disabled = page <= 1;
-    prev.style.opacity = prev.disabled ? ".5" : "1";
-    prev.onclick = async () => loadSongsPage(page - 1);
-
-    const next = document.createElement("button");
-    next.className = "pagebtn";
-    next.textContent = "▶";
-    next.disabled = page >= totalPages;
-    next.style.opacity = next.disabled ? ".5" : "1";
-    next.onclick = async () => loadSongsPage(page + 1);
-
-    right.appendChild(prev);
-
-    const start = Math.max(1, page - 3);
-    const end = Math.min(totalPages, start + 6);
-    for (let p = start; p <= end; p++) {
+    function pageBtn(label, onClick, disabled=false, active=false){
       const b = document.createElement("button");
-      b.className = "pagebtn" + (p === page ? " active" : "");
-      b.textContent = String(p);
-      b.onclick = async () => loadSongsPage(p);
-      right.appendChild(b);
+      b.className = "btn secondary small";
+      b.textContent = label;
+      b.disabled = disabled;
+      b.style.opacity = disabled ? ".5" : "1";
+      if (active) b.style.borderColor = "rgba(122,167,255,.95)";
+      b.onclick = onClick;
+      return b;
     }
 
-    right.appendChild(next);
+    right.appendChild(pageBtn("◀", () => loadSongsPage(page-1), page<=1));
+    const start = Math.max(1, page-3);
+    const end = Math.min(totalPages, start+6);
+    for (let p=start; p<=end; p++){
+      right.appendChild(pageBtn(String(p), () => loadSongsPage(p), false, p===page));
+    }
+    right.appendChild(pageBtn("▶", () => loadSongsPage(page+1), page>=totalPages));
 
-    pagerEl.appendChild(left);
-    pagerEl.appendChild(right);
+    wrap.appendChild(left);
+    wrap.appendChild(right);
+    pagerEl.appendChild(wrap);
   }
-
   async function loadSongsPage(page) {
     setMsg(msgSongs, "", "");
     renderSongsHeader();
-
-    const loadingRow = document.createElement("div");
-    loadingRow.className = "row";
-    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
-    songsListEl.appendChild(loadingRow);
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
+    songsListEl.appendChild(row);
 
     try {
-      const data = await api(`/api/songs/page?page=${encodeURIComponent(page)}&limit=20`, { method: "GET" });
+      const data = await api(`/api/songs/page?page=${encodeURIComponent(page)}&limit=20`, { method:"GET" });
       renderSongsHeader();
-
       if (!data.items || data.items.length === 0) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhuma música cadastrada</div>`;
-        songsListEl.appendChild(row);
+        const r = document.createElement("div");
+        r.className = "row";
+        r.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhuma música cadastrada</div>`;
+        songsListEl.appendChild(r);
       } else {
         for (const s of data.items) appendSongsRow(s);
       }
-
       renderPager(data);
     } catch (e) {
       renderSongsHeader();
-      const row = document.createElement("div");
-      row.className = "row";
-      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar</div>`;
-      songsListEl.appendChild(row);
+      const r = document.createElement("div");
+      r.className = "row";
+      r.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar</div>`;
+      songsListEl.appendChild(r);
       setMsg(msgSongs, "❌ " + e.message, "err");
     }
   }
@@ -821,26 +784,19 @@
   pdfBtn.onclick = async () => {
     setMsg(msgSongs, "Gerando PDF...", "");
     try {
-      const r = await fetch(`${API_BASE}/api/songs/pdf`, {
-        method: "GET",
-        credentials: "include"
-      });
-
+      const r = await fetch(`${API_BASE}/api/songs/pdf`, { method:"GET", credentials:"include" });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
         throw new Error(data.error || "Erro ao gerar PDF");
       }
-
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
       a.download = "musicas.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
-
       URL.revokeObjectURL(url);
       setMsg(msgSongs, "✅ PDF gerado!", "ok");
     } catch (e) {
@@ -848,112 +804,153 @@
     }
   };
 
-  // ADMIN
-  function renderPendingHeader() {
-    pendingListEl.innerHTML = `
-      <div class="row header admin">
-        <div class="cell">Nome</div>
-        <div class="cell">Email</div>
-        <div class="cell">Criado em</div>
-        <div class="cell" style="text-align:right;">Ações</div>
-      </div>
-    `;
-  }
-
+  // ADMIN: listar TODOS usuários
   function formatDate(iso) {
     try { return new Date(iso).toLocaleString("pt-BR"); }
     catch { return iso || ""; }
   }
 
-  function appendPendingRow(u) {
+  function badgeForUser(u) {
+    if (u.is_admin) return `<span class="badge admin">👑 ADMIN</span>`;
+    if (!u.is_approved) return `<span class="badge warn">⏳ PENDENTE</span>`;
+    if (u.is_super) return `<span class="badge super">✨ SUPER</span>`;
+    return `<span class="badge ok">✅ APROVADO</span>`;
+  }
+
+  function renderUsersHeader() {
+    usersListEl.innerHTML = `
+      <div class="row header admin">
+        <div class="cell">Nome</div>
+        <div class="cell">Email</div>
+        <div class="cell">Status</div>
+        <div class="cell" style="text-align:right;">Ações</div>
+      </div>
+    `;
+  }
+
+  async function doApprove(id) {
+    setMsg(msgAdmin, "Aprovando...", "");
+    await api(`/api/admin/approve/${encodeURIComponent(id)}`, { method:"POST" });
+    setMsg(msgAdmin, "✅ Usuário aprovado!", "ok");
+    await loadAllUsers();
+  }
+
+  async function doApproveSuper(id) {
+    const ok = confirm("Aprovar como SUPER? Ele poderá editar músicas de qualquer autor (mas não aprova usuários).");
+    if (!ok) return;
+    setMsg(msgAdmin, "Aprovando como SUPER...", "");
+    await api(`/api/admin/approve-super/${encodeURIComponent(id)}`, { method:"POST" });
+    setMsg(msgAdmin, "✅ Usuário aprovado como SUPER!", "ok");
+    await loadAllUsers();
+  }
+
+  async function doToggleSuper(id, makeSuper) {
+    const txt = makeSuper ? "Tornar SUPER? (vai editar músicas de qualquer autor)" : "Remover SUPER?";
+    const ok = confirm(txt);
+    if (!ok) return;
+    setMsg(msgAdmin, makeSuper ? "Marcando como SUPER..." : "Removendo SUPER...", "");
+    await api(`/api/admin/set-super/${encodeURIComponent(id)}`, {
+      method:"POST",
+      body: JSON.stringify({ is_super: !!makeSuper })
+    });
+    setMsg(msgAdmin, makeSuper ? "✅ Usuário virou SUPER." : "✅ SUPER removido.", "ok");
+    await loadAllUsers();
+  }
+
+  async function doDeny(id) {
+    const ok = confirm("Negar e DELETAR este usuário? Isso remove o usuário do sistema.");
+    if (!ok) return;
+    setMsg(msgAdmin, "Deletando usuário...", "");
+    await api(`/api/admin/deny/${encodeURIComponent(id)}`, { method:"POST" });
+    setMsg(msgAdmin, "✅ Usuário deletado.", "ok");
+    await loadAllUsers();
+  }
+
+  function appendUserRow(u) {
     const row = document.createElement("div");
     row.className = "row admin";
+
+    const status = badgeForUser(u);
+
+    let actionsHtml = "";
+    if (u.is_admin) {
+      actionsHtml = `<span class="badge admin">Protegido</span>`;
+    } else if (!u.is_approved) {
+      actionsHtml = `
+        <button class="btn small" data-approve="${u.id}">Aprovar</button>
+        <button class="btn secondary small" data-approve-super="${u.id}">Aprovar SUPER</button>
+        <button class="btn danger small" data-deny="${u.id}">Negar</button>
+      `;
+    } else {
+      actionsHtml = `
+        ${u.is_super
+          ? `<button class="btn secondary small" data-super-off="${u.id}">Remover SUPER</button>`
+          : `<button class="btn secondary small" data-super-on="${u.id}">Tornar SUPER</button>`
+        }
+        <button class="btn danger small" data-deny="${u.id}">Deletar</button>
+      `;
+    }
+
     row.innerHTML = `
       <div class="cell" title="${u.name || ""}">${u.name || ""}</div>
       <div class="cell" title="${u.email || ""}">${u.email || ""}</div>
-      <div class="cell" title="${u.created_at || ""}">${formatDate(u.created_at)}</div>
-      <div class="actions">
-        <button class="btn small" type="button" data-approve="${u.id}">Aprovar</button>
-        <button class="btn secondary small" type="button" data-approve-super="${u.id}">Aprovar SUPER</button>
-        <button class="btn danger small" type="button" data-deny="${u.id}">Negar</button>
+      <div class="cell" title="${formatDate(u.created_at)}">
+        ${status}
       </div>
+      <div class="actions">${actionsHtml}</div>
     `;
 
-    row.querySelector("[data-approve]").onclick = async () => {
-      setMsg(msgAdmin, "Aprovando...", "");
-      try {
-        await api(`/api/admin/approve/${encodeURIComponent(u.id)}`, { method: "POST" });
-        setMsg(msgAdmin, "✅ Usuário aprovado!", "ok");
-        await loadPending();
-      } catch (e) {
-        setMsg(msgAdmin, "❌ " + e.message, "err");
-      }
-    };
+    const bApprove = row.querySelector("[data-approve]");
+    if (bApprove) bApprove.onclick = () => doApprove(u.id);
 
-    row.querySelector("[data-approve-super]").onclick = async () => {
-      const ok = confirm("Aprovar como SUPER? Ele poderá editar músicas de qualquer autor (mas não aprova usuários).");
-      if (!ok) return;
+    const bApproveSuper = row.querySelector("[data-approve-super]");
+    if (bApproveSuper) bApproveSuper.onclick = () => doApproveSuper(u.id);
 
-      setMsg(msgAdmin, "Aprovando como SUPER...", "");
-      try {
-        await api(`/api/admin/approve-super/${encodeURIComponent(u.id)}`, { method: "POST" });
-        setMsg(msgAdmin, "✅ Usuário aprovado como SUPER!", "ok");
-        await loadPending();
-      } catch (e) {
-        setMsg(msgAdmin, "❌ " + e.message, "err");
-      }
-    };
+    const bSuperOn = row.querySelector("[data-super-on]");
+    if (bSuperOn) bSuperOn.onclick = () => doToggleSuper(u.id, true);
 
-    row.querySelector("[data-deny]").onclick = async () => {
-      const ok = confirm("Negar aprovação e DELETAR este usuário? Isso removerá o usuário do sistema.");
-      if (!ok) return;
+    const bSuperOff = row.querySelector("[data-super-off]");
+    if (bSuperOff) bSuperOff.onclick = () => doToggleSuper(u.id, false);
 
-      setMsg(msgAdmin, "Negando (deletando usuário)...", "");
-      try {
-        await api(`/api/admin/deny/${encodeURIComponent(u.id)}`, { method: "POST" });
-        setMsg(msgAdmin, "✅ Usuário deletado.", "ok");
-        await loadPending();
-      } catch (e) {
-        setMsg(msgAdmin, "❌ " + e.message, "err");
-      }
-    };
+    const bDeny = row.querySelector("[data-deny]");
+    if (bDeny) bDeny.onclick = () => doDeny(u.id);
 
-    pendingListEl.appendChild(row);
+    usersListEl.appendChild(row);
   }
 
-  async function loadPending() {
+  async function loadAllUsers() {
     setMsg(msgAdmin, "", "");
-    renderPendingHeader();
+    renderUsersHeader();
 
     const loadingRow = document.createElement("div");
     loadingRow.className = "row admin";
-    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
-    pendingListEl.appendChild(loadingRow);
+    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando usuários...</div>`;
+    usersListEl.appendChild(loadingRow);
 
     try {
-      const pending = await api("/api/admin/pending", { method: "GET" });
-      renderPendingHeader();
+      const users = await api("/api/admin/users", { method:"GET" });
+      renderUsersHeader();
 
-      if (!pending.length) {
+      if (!users.length) {
         const row = document.createElement("div");
         row.className = "row admin";
-        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhum usuário pendente 🎉</div>`;
-        pendingListEl.appendChild(row);
+        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhum usuário encontrado</div>`;
+        usersListEl.appendChild(row);
         return;
       }
 
-      for (const u of pending) appendPendingRow(u);
+      for (const u of users) appendUserRow(u);
     } catch (e) {
-      renderPendingHeader();
+      renderUsersHeader();
       const row = document.createElement("div");
       row.className = "row admin";
-      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar pendentes</div>`;
-      pendingListEl.appendChild(row);
+      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar usuários</div>`;
+      usersListEl.appendChild(row);
       setMsg(msgAdmin, "❌ " + e.message, "err");
     }
   }
 
-  refreshPendingBtn.onclick = loadPending;
+  refreshUsersBtn.onclick = loadAllUsers;
 
   async function approveFromUrlIfNeeded() {
     const params = new URLSearchParams(window.location.search);
@@ -971,7 +968,7 @@
     try {
       await api(`/api/admin/approve-token/${encodeURIComponent(approveTok)}`, { method: "POST" });
       setMsg(msgAdmin, "✅ Usuário aprovado via link!", "ok");
-      await loadPending();
+      await loadAllUsers();
     } catch (e) {
       setMsg(msgAdmin, "❌ " + e.message, "err");
     } finally {
