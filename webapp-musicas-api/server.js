@@ -31,6 +31,66 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+async function ensureSchema() {
+  // Tabelas principais
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(80) NOT NULL,
+      email VARCHAR(160) UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+      is_super BOOLEAN NOT NULL DEFAULT FALSE,
+      is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS approval_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS songs (
+      id SERIAL PRIMARY KEY,
+      created_by INT NULL REFERENCES users(id) ON DELETE SET NULL,
+      cantor VARCHAR(120) NOT NULL,
+      musica VARCHAR(160) NOT NULL,
+      tom VARCHAR(50) NULL,
+      link VARCHAR(800) NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // LISTAS
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lists (
+      id SERIAL PRIMARY KEY,
+      created_by INT NULL REFERENCES users(id) ON DELETE SET NULL,
+      name VARCHAR(120) NOT NULL,
+      description VARCHAR(300) NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS list_songs (
+      list_id INT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+      song_id INT NOT NULL REFERENCES songs(id) ON DELETE CASCADE,
+      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (list_id, song_id)
+    );
+  `);
+}
+
 // Headers básicos de segurança
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -579,6 +639,15 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
   }
 });
 
+app.get("/api/songs/count", authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT COUNT(*)::int AS total FROM songs`);
+    res.json({ total: r.rows[0]?.total || 0 });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
 app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json([]);
@@ -650,6 +719,153 @@ app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   }
 });
 
+// ===== LISTS =====
+function canManageLists(req) {
+  return !!(req.user?.is_admin || req.user?.is_super);
+}
+
+// Listar listas (qualquer usuário logado)
+app.get("/api/lists", authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id, created_by, name, description, created_at, updated_at
+       FROM lists
+       ORDER BY LOWER(name) ASC, id ASC`
+    );
+    res.json(r.rows);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Criar lista (ADMIN/SUPER)
+app.post("/api/lists", authMiddleware, async (req, res) => {
+  if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem criar listas." });
+
+  const name = clampStr(req.body?.name, 120);
+  const description = clampStr(req.body?.description, 300) || null;
+  if (!name) return res.status(400).json({ error: "Nome da lista é obrigatório" });
+
+  try {
+    const r = await pool.query(
+      `INSERT INTO lists (created_by, name, description)
+       VALUES ($1, $2, $3)
+       RETURNING id, created_by, name, description, created_at, updated_at`,
+      [req.user.uid, name, description]
+    );
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Atualizar lista (ADMIN/SUPER)
+app.put("/api/lists/:id", authMiddleware, async (req, res) => {
+  if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem editar listas." });
+
+  const id = Number(req.params.id);
+  if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+
+  const name = clampStr(req.body?.name, 120);
+  const description = clampStr(req.body?.description, 300) || null;
+  if (!name) return res.status(400).json({ error: "Nome da lista é obrigatório" });
+
+  try {
+    const r = await pool.query(
+      `UPDATE lists
+       SET name=$1, description=$2, updated_at=NOW()
+       WHERE id=$3
+       RETURNING id, created_by, name, description, created_at, updated_at`,
+      [name, description, id]
+    );
+    if (r.rowCount === 0) return res.status(404).json({ error: "Lista não encontrada" });
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Excluir lista (ADMIN/SUPER)
+app.delete("/api/lists/:id", authMiddleware, async (req, res) => {
+  if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem excluir listas." });
+
+  const id = Number(req.params.id);
+  if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+
+  try {
+    const r = await pool.query(`DELETE FROM lists WHERE id=$1`, [id]);
+    if (r.rowCount === 0) return res.status(404).json({ error: "Lista não encontrada" });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Músicas de uma lista (qualquer usuário logado)
+app.get("/api/lists/:id/songs", authMiddleware, async (req, res) => {
+  const listId = Number(req.params.id);
+  if (!listId || Number.isNaN(listId)) return res.status(400).json({ error: "ID inválido" });
+
+  try {
+    const r = await pool.query(
+      `SELECT s.id, s.created_by, s.cantor, s.musica, s.tom, s.link, s.created_at
+       FROM list_songs ls
+       JOIN songs s ON s.id = ls.song_id
+       WHERE ls.list_id = $1
+       ORDER BY LOWER(s.cantor) ASC, LOWER(s.musica) ASC`,
+      [listId]
+    );
+    res.json(r.rows);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Adicionar música na lista (ADMIN/SUPER)
+app.post("/api/lists/:id/songs", authMiddleware, async (req, res) => {
+  if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem alterar listas." });
+
+  const listId = Number(req.params.id);
+  const songId = Number(req.body?.songId);
+  if (!listId || Number.isNaN(listId)) return res.status(400).json({ error: "ID inválido" });
+  if (!songId || Number.isNaN(songId)) return res.status(400).json({ error: "songId inválido" });
+
+  try {
+    // valida existência
+    const l = await pool.query(`SELECT id FROM lists WHERE id=$1`, [listId]);
+    if (l.rowCount === 0) return res.status(404).json({ error: "Lista não encontrada" });
+    const s = await pool.query(`SELECT id FROM songs WHERE id=$1`, [songId]);
+    if (s.rowCount === 0) return res.status(404).json({ error: "Música não encontrada" });
+
+    await pool.query(
+      `INSERT INTO list_songs (list_id, song_id)
+       VALUES ($1, $2)
+       ON CONFLICT (list_id, song_id) DO NOTHING`,
+      [listId, songId]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
+// Remover música da lista (ADMIN/SUPER)
+app.delete("/api/lists/:id/songs/:songId", authMiddleware, async (req, res) => {
+  if (!canManageLists(req)) return res.status(403).json({ error: "Apenas ADMIN/SUPER podem alterar listas." });
+
+  const listId = Number(req.params.id);
+  const songId = Number(req.params.songId);
+  if (!listId || Number.isNaN(listId)) return res.status(400).json({ error: "ID inválido" });
+  if (!songId || Number.isNaN(songId)) return res.status(400).json({ error: "songId inválido" });
+
+  try {
+    await pool.query(`DELETE FROM list_songs WHERE list_id=$1 AND song_id=$2`, [listId, songId]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
+  }
+});
+
 // ===== STATIC =====
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -659,4 +875,13 @@ app.use(express.static(publicDir));
 app.get("/", (req, res) => res.sendFile(path.join(publicDir, "index.html")));
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log("Rodando na porta", port, "env:", NODE_ENV));
+
+async function main() {
+  await ensureSchema();
+  app.listen(port, () => console.log("Rodando na porta", port, "env:", NODE_ENV));
+}
+
+main().catch((e) => {
+  console.error("Falha ao iniciar:", e);
+  process.exit(1);
+});
