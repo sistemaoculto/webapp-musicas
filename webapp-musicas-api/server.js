@@ -6,54 +6,169 @@ import pkg from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import PDFDocument from "pdfkit";
+import crypto from "crypto";
 
 const { Pool } = pkg;
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "200kb" }));
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "emerson@dmminformatica.com.br").toLowerCase();
-const RESEND_API_KEY = process.env.RESEND_API_KEY || ""; // opcional (mas necessário p/ email)
-const APP_BASE_URL = process.env.APP_BASE_URL || ""; // ex: https://webapp-musicas.onrender.com
+const APP_BASE_URL = process.env.APP_BASE_URL || "https://webapp-musicas.onrender.com";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN || APP_BASE_URL; // ex: https://webapp-musicas.onrender.com
+const NODE_ENV = process.env.NODE_ENV || "production";
 
 if (!DATABASE_URL) throw new Error("DATABASE_URL não definido");
 if (!JWT_SECRET) throw new Error("JWT_SECRET não definido");
-
-app.use(cors({ origin: CORS_ORIGIN }));
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
+// =========================
+// Security headers (sem quebrar o front)
+// =========================
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  next();
+});
+
+// =========================
+// CORS restrito + cookies
+// =========================
+const allowedOrigins = new Set([CORS_ORIGIN]);
+app.use(cors({
+  origin: (origin, cb) => {
+    // sem origin (ex: curl) -> permite
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.has(origin)) return cb(null, true);
+    return cb(new Error("CORS bloqueado"), false);
+  },
+  credentials: true
+}));
+
+// =========================
+// Rate limit simples (sem dependências)
+// =========================
+function makeRateLimiter({ windowMs, max }) {
+  const hits = new Map(); // key -> { count, resetAt }
+  return function rateLimit(req, res, next) {
+    const key = `${req.ip}:${req.path}`;
+    const now = Date.now();
+    const item = hits.get(key);
+
+    if (!item || now > item.resetAt) {
+      hits.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    item.count += 1;
+    if (item.count > max) {
+      const retry = Math.ceil((item.resetAt - now) / 1000);
+      res.setHeader("Retry-After", String(retry));
+      return res.status(429).json({ error: "Muitas tentativas. Tente novamente em alguns minutos." });
+    }
+    return next();
+  };
+}
+
+const loginLimiter = makeRateLimiter({ windowMs: 15 * 60 * 1000, max: 25 });
+const registerLimiter = makeRateLimiter({ windowMs: 30 * 60 * 1000, max: 15 });
+
+// =========================
+// Cookie helpers
+// =========================
+const COOKIE_NAME = "session";
+function setSessionCookie(res, token) {
+  const secure = true; // Render é https
+  const sameSite = "Lax";
+  const maxAgeSec = 7 * 24 * 60 * 60;
+
+  const parts = [
+    `${COOKIE_NAME}=${token}`,
+    `Path=/`,
+    `HttpOnly`,
+    `SameSite=${sameSite}`,
+    `Max-Age=${maxAgeSec}`
+  ];
+  if (secure) parts.push("Secure");
+  res.setHeader("Set-Cookie", parts.join("; "));
+}
+
+function clearSessionCookie(res) {
+  const parts = [
+    `${COOKIE_NAME}=`,
+    `Path=/`,
+    `HttpOnly`,
+    `SameSite=Lax`,
+    `Max-Age=0`
+  ];
+  parts.push("Secure");
+  res.setHeader("Set-Cookie", parts.join("; "));
+}
+
+function getCookie(req, name) {
+  const header = req.headers.cookie || "";
+  const cookies = header.split(";").map(v => v.trim());
+  for (const c of cookies) {
+    const idx = c.indexOf("=");
+    if (idx === -1) continue;
+    const k = c.slice(0, idx).trim();
+    const v = c.slice(idx + 1);
+    if (k === name) return v;
+  }
+  return "";
+}
+
+// =========================
+// Validation helpers
+// =========================
+function isEmail(x) {
+  const s = String(x || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+function clampStr(x, max) {
+  const s = String(x ?? "").trim();
+  if (!s) return "";
+  return s.length > max ? s.slice(0, max) : s;
+}
+function validHttpUrl(x) {
+  const s = String(x || "").trim();
+  if (!s) return true; // link é opcional
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function signToken(user) {
   return jwt.sign(
-    {
-      uid: user.id,
-      email: user.email,
-      name: user.name || "",
-      is_admin: !!user.is_admin
-    },
+    { uid: user.id, email: user.email, name: user.name || "", is_admin: !!user.is_admin },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
 }
 
 function authMiddleware(req, res, next) {
-  const header = req.headers.authorization || "";
-  const parts = header.split(" ");
-  const token = parts.length === 2 ? parts[1] : null;
-  if (!token) return res.status(401).json({ error: "Sem token" });
+  const tok = getCookie(req, COOKIE_NAME);
+  if (!tok) return res.status(401).json({ error: "Sem sessão" });
 
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    req.user = jwt.verify(tok, JWT_SECRET);
     return next();
   } catch {
-    return res.status(401).json({ error: "Token inválido" });
+    return res.status(401).json({ error: "Sessão inválida" });
   }
 }
 
@@ -62,24 +177,18 @@ function adminOnly(req, res, next) {
   next();
 }
 
-async function sendAdminEmailNewUser({ name, email, userId }) {
-  // Se não tiver API key, não falha o cadastro, só não envia email.
-  if (!RESEND_API_KEY || !APP_BASE_URL) return;
+// =========================
+// Email (Resend)
+// =========================
+function sha256Hex(s) {
+  return crypto.createHash("sha256").update(String(s)).digest("hex");
+}
+function randomToken() {
+  return crypto.randomBytes(32).toString("hex"); // 64 chars
+}
 
-  const approveUrl = `${APP_BASE_URL}/dashboard.html?approve=${encodeURIComponent(userId)}`;
-
-  const subject = "Aprovação de usuário - Músicas da Jhenny";
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height:1.4">
-      <h2>Novo usuário aguardando aprovação</h2>
-      <p><b>Nome:</b> ${String(name || "")}</p>
-      <p><b>Email:</b> ${String(email || "")}</p>
-      <p>Clique para aprovar:</p>
-      <p><a href="${approveUrl}">${approveUrl}</a></p>
-    </div>
-  `;
-
-  // Resend API
+async function sendResendEmail({ to, subject, html }) {
+  if (!RESEND_API_KEY) return;
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -88,13 +197,51 @@ async function sendAdminEmailNewUser({ name, email, userId }) {
     },
     body: JSON.stringify({
       from: "Musicas da Jhenny <onboarding@resend.dev>",
-      to: [ADMIN_EMAIL],
+      to: [to],
       subject,
       html
     })
   });
 }
 
+async function createApprovalToken(userId) {
+  const raw = randomToken();
+  const hash = sha256Hex(raw);
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+  await pool.query(
+    `INSERT INTO approval_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [userId, hash, expires.toISOString()]
+  );
+
+  return raw;
+}
+
+async function emailAdminApproval({ userId, name, email }) {
+  if (!RESEND_API_KEY) return;
+
+  const token = await createApprovalToken(userId);
+  const approveUrl = `${APP_BASE_URL}/dashboard.html?approve=${encodeURIComponent(token)}`;
+
+  const subject = "Aprovação de usuário - Músicas da Jhenny";
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height:1.45">
+      <h2>Novo usuário aguardando aprovação</h2>
+      <p><b>Nome:</b> ${String(name || "")}</p>
+      <p><b>Email:</b> ${String(email || "")}</p>
+      <p>Para aprovar, clique:</p>
+      <p><a href="${approveUrl}">${approveUrl}</a></p>
+      <p style="color:#666;font-size:12px">Este link expira em 24 horas.</p>
+    </div>
+  `;
+
+  await sendResendEmail({ to: ADMIN_EMAIL, subject, html });
+}
+
+// =========================
+// Routes
+// =========================
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -104,46 +251,65 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// ===== AUTH =====
-app.post("/api/register", async (req, res) => {
-  const { name, email, password } = req.body || {};
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+// Quem está logado
+app.get("/api/me", authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id, name, email, is_admin, is_approved
+       FROM users
+       WHERE id=$1`,
+      [req.user.uid]
+    );
+    const u = r.rows[0];
+    if (!u) return res.status(401).json({ error: "Sessão inválida" });
+    if (!u.is_approved) return res.status(403).json({ error: "Aguardando aprovação do administrador." });
+    res.json({ id: u.id, name: u.name || "", email: u.email, is_admin: !!u.is_admin });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || "") });
   }
+});
 
-  const emailLower = email.toLowerCase().trim();
+app.post("/api/logout", (req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// ===== AUTH =====
+app.post("/api/register", registerLimiter, async (req, res) => {
+  const name = clampStr(req.body?.name, 80);
+  const email = String(req.body?.email || "").toLowerCase().trim();
+  const password = String(req.body?.password || "");
+
+  if (!name) return res.status(400).json({ error: "Nome é obrigatório" });
+  if (!isEmail(email)) return res.status(400).json({ error: "Email inválido" });
+  if (password.length < 8) return res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
 
   try {
-    const hash = await bcrypt.hash(password, 10);
-
-    // Se o email for o do admin, já aprova + admin
-    const isAdmin = emailLower === ADMIN_EMAIL;
+    const hash = await bcrypt.hash(password, 12);
+    const isAdmin = email === ADMIN_EMAIL;
 
     const result = await pool.query(
       `INSERT INTO users (name, email, password_hash, is_admin, is_approved)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, email, is_admin, is_approved`,
-      [name.trim(), emailLower, hash, isAdmin, isAdmin] // admin já aprovado
+      [name, email, hash, isAdmin, isAdmin]
     );
 
     const user = result.rows[0];
 
-    // Se não for admin, manda email para o admin aprovar
+    // Usuário normal: pendente + email para admin
     if (!user.is_admin) {
-      try {
-        await sendAdminEmailNewUser({ name: user.name, email: user.email, userId: user.id });
-      } catch {
-        // não bloqueia cadastro se email falhar
-      }
-      // Não devolve token (fica pendente)
+      try { await emailAdminApproval({ userId: user.id, name: user.name, email: user.email }); } catch {}
       return res.json({
         pending: true,
         message: "Cadastro criado! Aguarde aprovação do administrador para acessar."
       });
     }
 
-    // Admin cadastra e já entra
-    return res.json({ token: signToken(user), name: user.name, email: user.email });
+    // Admin: entra direto (cookie)
+    const tok = signToken(user);
+    setSessionCookie(res, tok);
+    return res.json({ ok: true, user: { name: user.name, email: user.email, is_admin: true } });
   } catch (e) {
     const msg = String(e.message || "");
     if (msg.includes("duplicate key") || msg.includes("users_email_key")) {
@@ -153,14 +319,17 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios" });
+app.post("/api/login", loginLimiter, async (req, res) => {
+  const email = String(req.body?.email || "").toLowerCase().trim();
+  const password = String(req.body?.password || "");
+
+  if (!isEmail(email)) return res.status(400).json({ error: "Email inválido" });
+  if (!password) return res.status(400).json({ error: "Senha obrigatória" });
 
   try {
     const result = await pool.query(
       "SELECT id, name, email, password_hash, is_admin, is_approved FROM users WHERE email=$1",
-      [email.toLowerCase().trim()]
+      [email]
     );
 
     const user = result.rows[0];
@@ -173,13 +342,16 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "Aguardando aprovação do administrador." });
     }
 
-    res.json({ token: signToken(user), name: user.name || "", email: user.email });
+    const tok = signToken(user);
+    setSessionCookie(res, tok);
+
+    res.json({ ok: true, user: { name: user.name || "", email: user.email, is_admin: !!user.is_admin } });
   } catch (e) {
     res.status(500).json({ error: String(e.message || "") });
   }
 });
 
-// ===== ADMIN: listar pendentes e aprovar =====
+// ===== ADMIN =====
 app.get("/api/admin/pending", authMiddleware, adminOnly, async (req, res) => {
   const r = await pool.query(
     `SELECT id, name, email, created_at
@@ -191,6 +363,7 @@ app.get("/api/admin/pending", authMiddleware, adminOnly, async (req, res) => {
   res.json(r.rows);
 });
 
+// Aprovar por ID (UI do admin)
 app.post("/api/admin/approve/:id", authMiddleware, adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
@@ -198,7 +371,7 @@ app.post("/api/admin/approve/:id", authMiddleware, adminOnly, async (req, res) =
   const r = await pool.query(
     `UPDATE users
      SET is_approved = TRUE
-     WHERE id = $1 AND is_approved = FALSE
+     WHERE id=$1 AND is_approved=FALSE
      RETURNING id, name, email`,
     [id]
   );
@@ -207,19 +380,58 @@ app.post("/api/admin/approve/:id", authMiddleware, adminOnly, async (req, res) =
   res.json({ ok: true, user: r.rows[0] });
 });
 
-// ===== SONGS (AGORA COMPARTILHADO) =====
+// Aprovar por TOKEN (link do e-mail) - token expira e é de uso único
+app.post("/api/admin/approve-token/:token", authMiddleware, adminOnly, async (req, res) => {
+  const raw = String(req.params.token || "").trim();
+  if (raw.length < 20) return res.status(400).json({ error: "Token inválido" });
 
-// CREATE (qualquer usuário aprovado pode adicionar)
+  const hash = sha256Hex(raw);
+
+  const t = await pool.query(
+    `SELECT id, user_id, expires_at, used_at
+     FROM approval_tokens
+     WHERE token_hash=$1`,
+    [hash]
+  );
+
+  const row = t.rows[0];
+  if (!row) return res.status(404).json({ error: "Token não encontrado" });
+  if (row.used_at) return res.status(400).json({ error: "Token já usado" });
+
+  const exp = new Date(row.expires_at).getTime();
+  if (Date.now() > exp) return res.status(400).json({ error: "Token expirado" });
+
+  // Aprova usuário
+  await pool.query(`UPDATE users SET is_approved=TRUE WHERE id=$1`, [row.user_id]);
+  // Marca token como usado
+  await pool.query(`UPDATE approval_tokens SET used_at=NOW() WHERE id=$1`, [row.id]);
+
+  res.json({ ok: true });
+});
+
+// ===== SONGS (COMPARTILHADO) =====
+function normalizeSongInput(body) {
+  const cantor = clampStr(body?.cantor, 120);
+  const musica = clampStr(body?.musica, 160);
+  const tom = clampStr(body?.tom, 50);
+  const link = clampStr(body?.link, 800);
+
+  if (!cantor || !musica) return { error: "cantor e musica são obrigatórios" };
+  if (!validHttpUrl(link)) return { error: "Link inválido (use http/https)" };
+
+  return { cantor, musica, tom: tom || null, link: link || null };
+}
+
 app.post("/api/songs", authMiddleware, async (req, res) => {
-  const { cantor, musica, tom, link } = req.body || {};
-  if (!cantor || !musica) return res.status(400).json({ error: "cantor e musica são obrigatórios" });
+  const input = normalizeSongInput(req.body);
+  if (input.error) return res.status(400).json({ error: input.error });
 
   try {
     const r = await pool.query(
       `INSERT INTO songs (created_by, cantor, musica, tom, link)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, cantor, musica, tom, link, created_at`,
-      [req.user.uid, cantor, musica, tom || null, link || null]
+       RETURNING id, created_by, cantor, musica, tom, link, created_at`,
+      [req.user.uid, input.cantor, input.musica, input.tom, input.link]
     );
     res.json(r.rows[0]);
   } catch (e) {
@@ -227,35 +439,44 @@ app.post("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE (qualquer aprovado pode editar – se você quiser restringir para admin, eu ajusto)
+// Editar: ADMIN OU AUTOR
 app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   const id = Number(req.params.id);
-  const { cantor, musica, tom, link } = req.body || {};
   if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
-  if (!cantor || !musica) return res.status(400).json({ error: "cantor e musica são obrigatórios" });
+
+  const input = normalizeSongInput(req.body);
+  if (input.error) return res.status(400).json({ error: input.error });
 
   try {
+    // Busca created_by
+    const s = await pool.query(`SELECT id, created_by FROM songs WHERE id=$1`, [id]);
+    const song = s.rows[0];
+    if (!song) return res.status(404).json({ error: "Música não encontrada" });
+
+    const canEdit = !!req.user.is_admin || (song.created_by && Number(song.created_by) === Number(req.user.uid));
+    if (!canEdit) return res.status(403).json({ error: "Você não tem permissão para editar esta música." });
+
     const r = await pool.query(
       `UPDATE songs
        SET cantor=$1, musica=$2, tom=$3, link=$4
        WHERE id=$5
-       RETURNING id, cantor, musica, tom, link, created_at`,
-      [cantor, musica, tom || null, link || null, id]
+       RETURNING id, created_by, cantor, musica, tom, link, created_at`,
+      [input.cantor, input.musica, input.tom, input.link, id]
     );
-    if (r.rowCount === 0) return res.status(404).json({ error: "Música não encontrada" });
+
     res.json(r.rows[0]);
   } catch (e) {
     res.status(500).json({ error: String(e.message || "") });
   }
 });
 
-// LIST/SEARCH (GLOBAL)
+// List/search global
 app.get("/api/songs", authMiddleware, async (req, res) => {
-  const q = (req.query.q || "").toString().trim();
+  const q = String(req.query.q || "").trim();
   try {
     if (!q) {
       const r = await pool.query(
-        `SELECT id, cantor, musica, tom, link, created_at
+        `SELECT id, created_by, cantor, musica, tom, link, created_at
          FROM songs
          ORDER BY created_at DESC
          LIMIT 200`
@@ -265,7 +486,7 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
 
     const like = `%${q}%`;
     const r = await pool.query(
-      `SELECT id, cantor, musica, tom, link, created_at
+      `SELECT id, created_by, cantor, musica, tom, link, created_at
        FROM songs
        WHERE (cantor ILIKE $1 OR musica ILIKE $1)
        ORDER BY created_at DESC
@@ -278,7 +499,7 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// PAGINADO + ALFABÉTICO (GLOBAL)
+// Paginação A-Z global
 app.get("/api/songs/page", authMiddleware, async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
@@ -290,7 +511,7 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const itemsR = await pool.query(
-      `SELECT id, cantor, musica, tom, link, created_at
+      `SELECT id, created_by, cantor, musica, tom, link, created_at
        FROM songs
        ORDER BY LOWER(cantor) ASC, LOWER(musica) ASC
        LIMIT $1 OFFSET $2`,
@@ -303,9 +524,9 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
   }
 });
 
-// SUGGEST (GLOBAL)
+// Suggest global
 app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
-  const q = (req.query.q || "").toString().trim();
+  const q = String(req.query.q || "").trim();
   if (!q) return res.json([]);
 
   try {
@@ -315,7 +536,7 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
        FROM songs
        WHERE (cantor ILIKE $1 OR musica ILIKE $1)
        ORDER BY created_at DESC
-       LIMIT 20`,
+       LIMIT 30`,
       [like]
     );
 
@@ -330,7 +551,7 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   }
 });
 
-// PDF (GLOBAL, sem tom)
+// PDF global (sem tom)
 app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
@@ -350,8 +571,7 @@ app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
     doc.fontSize(10).fillColor("#555").text(`Total: ${r.rows.length}`, { align: "left" });
     doc.moveDown(1);
 
-    doc.fillColor("#000");
-    doc.fontSize(11);
+    doc.fillColor("#000").fontSize(11);
 
     doc.font("Helvetica-Bold");
     doc.text("Cantor", 40, doc.y, { continued: true, width: 170 });
@@ -386,4 +606,4 @@ app.use(express.static(publicDir));
 app.get("/", (req, res) => res.sendFile(path.join(publicDir, "index.html")));
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log("Rodando na porta", port));
+app.listen(port, () => console.log("Rodando na porta", port, "env:", NODE_ENV));
