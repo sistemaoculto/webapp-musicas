@@ -616,13 +616,17 @@
 
   // Mostrar email pelo token (sem chamar API)
   function tryShowEmailFromToken() {
-    try {
-      const parts = token.split(".");
-      if (parts.length !== 3) return;
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      if (payload && payload.email) userEmailEl.textContent = payload.email;
-    } catch {}
-  }
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload && payload.name) {
+      userEmailEl.textContent = payload.name;
+    } else if (payload && payload.email) {
+      userEmailEl.textContent = payload.email;
+    }
+  } catch {}
+}
 
   // Count (usa listagem simples e conta o tamanho)
   async function refreshCount() {
