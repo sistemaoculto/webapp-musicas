@@ -16,6 +16,10 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "emerson@dmminformatica.com.br").toLowerCase();
+const RESEND_API_KEY = process.env.RESEND_API_KEY || ""; // opcional (mas necessário p/ email)
+const APP_BASE_URL = process.env.APP_BASE_URL || ""; // ex: https://webapp-musicas.onrender.com
+
 if (!DATABASE_URL) throw new Error("DATABASE_URL não definido");
 if (!JWT_SECRET) throw new Error("JWT_SECRET não definido");
 
@@ -28,7 +32,12 @@ const pool = new Pool({
 
 function signToken(user) {
   return jwt.sign(
-    { uid: user.id, email: user.email, name: user.name || "" },
+    {
+      uid: user.id,
+      email: user.email,
+      name: user.name || "",
+      is_admin: !!user.is_admin
+    },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -38,7 +47,6 @@ function authMiddleware(req, res, next) {
   const header = req.headers.authorization || "";
   const parts = header.split(" ");
   const token = parts.length === 2 ? parts[1] : null;
-
   if (!token) return res.status(401).json({ error: "Sem token" });
 
   try {
@@ -47,6 +55,44 @@ function authMiddleware(req, res, next) {
   } catch {
     return res.status(401).json({ error: "Token inválido" });
   }
+}
+
+function adminOnly(req, res, next) {
+  if (!req.user?.is_admin) return res.status(403).json({ error: "Apenas administrador" });
+  next();
+}
+
+async function sendAdminEmailNewUser({ name, email, userId }) {
+  // Se não tiver API key, não falha o cadastro, só não envia email.
+  if (!RESEND_API_KEY || !APP_BASE_URL) return;
+
+  const approveUrl = `${APP_BASE_URL}/dashboard.html?approve=${encodeURIComponent(userId)}`;
+
+  const subject = "Aprovação de usuário - Músicas da Jhenny";
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height:1.4">
+      <h2>Novo usuário aguardando aprovação</h2>
+      <p><b>Nome:</b> ${String(name || "")}</p>
+      <p><b>Email:</b> ${String(email || "")}</p>
+      <p>Clique para aprovar:</p>
+      <p><a href="${approveUrl}">${approveUrl}</a></p>
+    </div>
+  `;
+
+  // Resend API
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: "Musicas da Jhenny <onboarding@resend.dev>",
+      to: [ADMIN_EMAIL],
+      subject,
+      html
+    })
+  });
 }
 
 app.get("/health", async (req, res) => {
@@ -65,16 +111,39 @@ app.post("/api/register", async (req, res) => {
     return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
   }
 
+  const emailLower = email.toLowerCase().trim();
+
   try {
     const hash = await bcrypt.hash(password, 10);
 
+    // Se o email for o do admin, já aprova + admin
+    const isAdmin = emailLower === ADMIN_EMAIL;
+
     const result = await pool.query(
-      "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email",
-      [name.trim(), email.toLowerCase(), hash]
+      `INSERT INTO users (name, email, password_hash, is_admin, is_approved)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, email, is_admin, is_approved`,
+      [name.trim(), emailLower, hash, isAdmin, isAdmin] // admin já aprovado
     );
 
     const user = result.rows[0];
-    res.json({ token: signToken(user), name: user.name, email: user.email });
+
+    // Se não for admin, manda email para o admin aprovar
+    if (!user.is_admin) {
+      try {
+        await sendAdminEmailNewUser({ name: user.name, email: user.email, userId: user.id });
+      } catch {
+        // não bloqueia cadastro se email falhar
+      }
+      // Não devolve token (fica pendente)
+      return res.json({
+        pending: true,
+        message: "Cadastro criado! Aguarde aprovação do administrador para acessar."
+      });
+    }
+
+    // Admin cadastra e já entra
+    return res.json({ token: signToken(user), name: user.name, email: user.email });
   } catch (e) {
     const msg = String(e.message || "");
     if (msg.includes("duplicate key") || msg.includes("users_email_key")) {
@@ -86,14 +155,12 @@ app.post("/api/register", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email e senha são obrigatórios" });
-  }
+  if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios" });
 
   try {
     const result = await pool.query(
-      "SELECT id, name, email, password_hash FROM users WHERE email=$1",
-      [email.toLowerCase()]
+      "SELECT id, name, email, password_hash, is_admin, is_approved FROM users WHERE email=$1",
+      [email.toLowerCase().trim()]
     );
 
     const user = result.rows[0];
@@ -102,22 +169,54 @@ app.post("/api/login", async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Email ou senha inválidos" });
 
+    if (!user.is_approved) {
+      return res.status(403).json({ error: "Aguardando aprovação do administrador." });
+    }
+
     res.json({ token: signToken(user), name: user.name || "", email: user.email });
   } catch (e) {
     res.status(500).json({ error: String(e.message || "") });
   }
 });
 
-// ===== SONGS =====
+// ===== ADMIN: listar pendentes e aprovar =====
+app.get("/api/admin/pending", authMiddleware, adminOnly, async (req, res) => {
+  const r = await pool.query(
+    `SELECT id, name, email, created_at
+     FROM users
+     WHERE is_approved = FALSE
+     ORDER BY created_at ASC
+     LIMIT 200`
+  );
+  res.json(r.rows);
+});
 
-// CREATE
+app.post("/api/admin/approve/:id", authMiddleware, adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || Number.isNaN(id)) return res.status(400).json({ error: "ID inválido" });
+
+  const r = await pool.query(
+    `UPDATE users
+     SET is_approved = TRUE
+     WHERE id = $1 AND is_approved = FALSE
+     RETURNING id, name, email`,
+    [id]
+  );
+
+  if (r.rowCount === 0) return res.status(404).json({ error: "Usuário não encontrado ou já aprovado" });
+  res.json({ ok: true, user: r.rows[0] });
+});
+
+// ===== SONGS (AGORA COMPARTILHADO) =====
+
+// CREATE (qualquer usuário aprovado pode adicionar)
 app.post("/api/songs", authMiddleware, async (req, res) => {
   const { cantor, musica, tom, link } = req.body || {};
   if (!cantor || !musica) return res.status(400).json({ error: "cantor e musica são obrigatórios" });
 
   try {
     const r = await pool.query(
-      `INSERT INTO songs (user_id, cantor, musica, tom, link)
+      `INSERT INTO songs (created_by, cantor, musica, tom, link)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, cantor, musica, tom, link, created_at`,
       [req.user.uid, cantor, musica, tom || null, link || null]
@@ -128,7 +227,7 @@ app.post("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE
+// UPDATE (qualquer aprovado pode editar – se você quiser restringir para admin, eu ajusto)
 app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   const id = Number(req.params.id);
   const { cantor, musica, tom, link } = req.body || {};
@@ -139,11 +238,10 @@ app.put("/api/songs/:id", authMiddleware, async (req, res) => {
     const r = await pool.query(
       `UPDATE songs
        SET cantor=$1, musica=$2, tom=$3, link=$4
-       WHERE id=$5 AND user_id=$6
+       WHERE id=$5
        RETURNING id, cantor, musica, tom, link, created_at`,
-      [cantor, musica, tom || null, link || null, id, req.user.uid]
+      [cantor, musica, tom || null, link || null, id]
     );
-
     if (r.rowCount === 0) return res.status(404).json({ error: "Música não encontrada" });
     res.json(r.rows[0]);
   } catch (e) {
@@ -151,7 +249,7 @@ app.put("/api/songs/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// LIST/SEARCH
+// LIST/SEARCH (GLOBAL)
 app.get("/api/songs", authMiddleware, async (req, res) => {
   const q = (req.query.q || "").toString().trim();
   try {
@@ -159,10 +257,8 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
       const r = await pool.query(
         `SELECT id, cantor, musica, tom, link, created_at
          FROM songs
-         WHERE user_id=$1
          ORDER BY created_at DESC
-         LIMIT 200`,
-        [req.user.uid]
+         LIMIT 200`
       );
       return res.json(r.rows);
     }
@@ -171,10 +267,10 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
     const r = await pool.query(
       `SELECT id, cantor, musica, tom, link, created_at
        FROM songs
-       WHERE user_id=$1 AND (cantor ILIKE $2 OR musica ILIKE $2)
+       WHERE (cantor ILIKE $1 OR musica ILIKE $1)
        ORDER BY created_at DESC
        LIMIT 200`,
-      [req.user.uid, like]
+      [like]
     );
     res.json(r.rows);
   } catch (e) {
@@ -182,30 +278,23 @@ app.get("/api/songs", authMiddleware, async (req, res) => {
   }
 });
 
-// PAGINADO + ALFABÉTICO
+// PAGINADO + ALFABÉTICO (GLOBAL)
 app.get("/api/songs/page", authMiddleware, async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
   const offset = (page - 1) * limit;
 
   try {
-    const totalR = await pool.query(
-      `SELECT COUNT(*)::int AS total
-       FROM songs
-       WHERE user_id=$1`,
-      [req.user.uid]
-    );
-
+    const totalR = await pool.query(`SELECT COUNT(*)::int AS total FROM songs`);
     const total = totalR.rows[0]?.total || 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const itemsR = await pool.query(
       `SELECT id, cantor, musica, tom, link, created_at
        FROM songs
-       WHERE user_id=$1
        ORDER BY LOWER(cantor) ASC, LOWER(musica) ASC
-       LIMIT $2 OFFSET $3`,
-      [req.user.uid, limit, offset]
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
     res.json({ items: itemsR.rows, total, page, limit, totalPages });
@@ -214,7 +303,7 @@ app.get("/api/songs/page", authMiddleware, async (req, res) => {
   }
 });
 
-// SUGGEST
+// SUGGEST (GLOBAL)
 app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   const q = (req.query.q || "").toString().trim();
   if (!q) return res.json([]);
@@ -224,10 +313,10 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
     const r = await pool.query(
       `SELECT cantor, musica
        FROM songs
-       WHERE user_id=$1 AND (cantor ILIKE $2 OR musica ILIKE $2)
+       WHERE (cantor ILIKE $1 OR musica ILIKE $1)
        ORDER BY created_at DESC
        LIMIT 20`,
-      [req.user.uid, like]
+      [like]
     );
 
     const set = new Set();
@@ -241,15 +330,13 @@ app.get("/api/songs/suggest", authMiddleware, async (req, res) => {
   }
 });
 
-// PDF (sem TOM)
+// PDF (GLOBAL, sem tom)
 app.get("/api/songs/pdf", authMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT cantor, musica, link
        FROM songs
-       WHERE user_id=$1
-       ORDER BY LOWER(cantor) ASC, LOWER(musica) ASC`,
-      [req.user.uid]
+       ORDER BY LOWER(cantor) ASC, LOWER(musica) ASC`
     );
 
     res.setHeader("Content-Type", "application/pdf");
