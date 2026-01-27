@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Home</title>
   <style>
     :root{
@@ -17,8 +17,12 @@
       --shadow: 0 18px 55px rgba(0,0,0,.55);
       --radius: 18px;
       --radius2: 14px;
+      --border: rgba(42,58,102,.7);
+      --glass: rgba(15,22,48,.45);
     }
+
     *{ box-sizing:border-box; }
+    html, body{ height:100%; }
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -28,25 +32,39 @@
         radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,.25), transparent 60%),
         radial-gradient(900px 500px at 90% 20%, rgba(167,139,250,.20), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
+
+    /* ============== TOPBAR ============== */
     .topbar{
       position: sticky;
       top:0;
       z-index:10;
       backdrop-filter: blur(10px);
-      background: rgba(10, 15, 32, .55);
+      -webkit-backdrop-filter: blur(10px);
+      background: rgba(10, 15, 32, .60);
       border-bottom: 1px solid rgba(42,58,102,.6);
+      padding-top: env(safe-area-inset-top);
     }
+
     .topbar-inner{
       max-width: 1100px;
       margin: 0 auto;
-      padding: 14px 18px;
+      padding: 12px 14px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
     }
-    .brand{ display:flex; align-items:center; gap:10px; min-width:220px; }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 160px;
+    }
+
     .pill{
       display:inline-flex;
       align-items:center;
@@ -57,8 +75,11 @@
       background: rgba(15,22,48,.45);
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
+
     .count{ font-size:12px; color:var(--muted); }
     .count b{ color:var(--text); font-size:14px; }
+
+    /* Desktop nav */
     .nav{
       display:flex;
       gap:10px;
@@ -66,6 +87,7 @@
       justify-content:center;
       flex: 1;
     }
+
     .nav button{
       border:1px solid rgba(42,58,102,.7);
       background: rgba(15,22,48,.35);
@@ -74,49 +96,113 @@
       border-radius: 999px;
       cursor:pointer;
       transition:.15s ease;
-      font-weight:600;
+      font-weight:700;
+      touch-action: manipulation;
     }
+
     .nav button:hover{
       transform: translateY(-1px);
       border-color: rgba(122,167,255,.65);
       box-shadow: 0 12px 35px rgba(0,0,0,.25);
     }
+
     .nav button.active{
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
       border-color: rgba(122,167,255,.85);
     }
+
     .userbox{
       display:flex;
       align-items:center;
       gap:10px;
       justify-content:flex-end;
-      min-width:280px;
+      min-width: 240px;
     }
+
     .userbox .logged{ text-align:right; line-height:1.1; }
     .userbox .logged .label{ font-size:11px; color:var(--muted); margin-bottom:2px; }
-    .userbox .logged .name{ font-size:12px; color:var(--text); max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .userbox .logged .email{ font-size:11px; color:var(--muted); max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; }
+    .userbox .logged .name{ font-size:12px; color:var(--text); max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .userbox .logged .email{ font-size:11px; color:var(--muted); max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; }
+
     .logout{
       border:none;
       background: transparent;
       color: var(--muted);
       font-size: 12px;
       cursor:pointer;
-      padding:6px 8px;
+      padding:8px 10px;
       border-radius: 10px;
       transition: .15s ease;
       border:1px solid transparent;
+      touch-action: manipulation;
     }
     .logout:hover{
       color: var(--text);
       border-color: rgba(42,58,102,.8);
       background: rgba(15,22,48,.35);
     }
-    .wrap{ max-width:1100px; margin:0 auto; padding: 26px 18px 60px; }
-    .hero{ display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin: 18px 0 22px; }
-    .hero h1{ margin:0; font-size:30px; }
-    .hero p{ margin:6px 0 0; color:var(--muted); max-width:800px; }
-    .grid{ display:grid; grid-template-columns:1fr; gap:18px; }
+
+    /* Mobile hamburger */
+    .hamburger{
+      display:none;
+      border: 1px solid rgba(42,58,102,.7);
+      background: rgba(15,22,48,.35);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight: 800;
+      touch-action: manipulation;
+    }
+    .hamburger:active{ transform: scale(.98); }
+
+    .mobile-drawer{
+      display:none;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 14px 12px;
+    }
+    .drawer{
+      border: 1px solid rgba(42,58,102,.7);
+      background: rgba(15,22,48,.35);
+      border-radius: 16px;
+      overflow:hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
+    .drawer .drawer-nav{
+      display:grid;
+      gap:10px;
+      padding: 12px;
+    }
+    .drawer .drawer-nav button{
+      width:100%;
+      text-align:left;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+
+    /* ============== BODY ============== */
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding: 18px 14px 70px;
+      padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    }
+
+    .hero{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:14px;
+      margin: 16px 0 18px;
+      flex-wrap:wrap;
+    }
+    .hero h1{ margin:0; font-size: clamp(22px, 5.2vw, 30px); }
+    .hero p{ margin:6px 0 0; color:var(--muted); max-width:850px; line-height:1.35; font-size: 14px; }
+
+    .grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+
     .card{
       border: 1px solid rgba(42,58,102,.8);
       background: rgba(15,22,48,.45);
@@ -124,21 +210,25 @@
       box-shadow: var(--shadow);
       overflow:hidden;
     }
+
     .card-header{
-      padding:16px 18px;
+      padding:14px 14px;
       border-bottom:1px solid rgba(42,58,102,.6);
       background: linear-gradient(135deg, rgba(122,167,255,.10), rgba(167,139,250,.08));
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
       gap:12px;
+      flex-wrap:wrap;
     }
-    .card-header .title{ font-weight:800; margin:0; }
-    .card-header .subtitle{ margin:6px 0 0; color:var(--muted); font-size:13px; }
-    .card-body{ padding:18px; }
+    .card-header .title{ font-weight:900; margin:0; }
+    .card-header .subtitle{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.3; }
+    .card-body{ padding:14px; }
+
     .center{ display:flex; justify-content:center; }
+
     .form{
-      width: min(640px, 100%);
+      width: min(680px, 100%);
       display:grid;
       gap:12px;
       padding:14px;
@@ -146,61 +236,76 @@
       border:1px solid rgba(42,58,102,.7);
       background: rgba(10,15,32,.35);
     }
-    .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    @media (max-width:680px){ .row2{ grid-template-columns:1fr; } .brand{ min-width:0; } .userbox{ min-width:0; } }
+
+    .row2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
     label{ font-size:12px; color:var(--muted); display:block; margin:2px 0 6px; }
+
     input{
       width:100%;
-      padding:12px;
-      border-radius:12px;
+      padding: 13px 12px;
+      border-radius: 12px;
       border:1px solid rgba(42,58,102,.85);
       background: rgba(15,22,48,.55);
       color: var(--text);
       outline:none;
       transition:.15s ease;
+      font-size: 16px; /* importante: iOS não dá zoom em input >=16px */
     }
+
     input:focus{
       border-color: rgba(122,167,255,.85);
       box-shadow: 0 0 0 4px rgba(122,167,255,.14);
     }
+
     .btn{
       display:inline-flex;
       align-items:center;
       justify-content:center;
       gap:10px;
-      padding:12px 14px;
+      padding: 12px 14px;
       border-radius:12px;
       border:1px solid rgba(122,167,255,.75);
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
       color: var(--text);
-      font-weight: 800;
+      font-weight: 900;
       cursor:pointer;
       transition:.15s ease;
       text-decoration:none;
       white-space: nowrap;
+      touch-action: manipulation;
+      min-height: 44px; /* toque */
     }
     .btn:hover{
       transform: translateY(-1px);
       box-shadow: 0 14px 40px rgba(0,0,0,.35);
       border-color: rgba(122,167,255,.95);
     }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+
     .btn.secondary{
       border-color: rgba(42,58,102,.85);
       background: rgba(15,22,48,.35);
-      font-weight:700;
+      font-weight:800;
     }
     .btn.danger{
       border-color: rgba(255,107,107,.75);
       background: rgba(255,107,107,.12);
-      font-weight:800;
+      font-weight:900;
     }
     .btn.small{
-      padding: 8px 10px;
-      font-size:12px;
-      border-radius:10px;
-      font-weight:700;
+      padding: 10px 12px;
+      font-size: 13px;
+      border-radius: 12px;
+      font-weight:800;
+      min-height: 40px;
     }
-    .msg{ margin:8px 0 0; font-size:13px; color:var(--muted); min-height:18px; }
+
+    .msg{ margin:8px 0 0; font-size:13px; color:var(--muted); min-height:18px; line-height:1.35; }
     .msg.ok{ color: var(--ok); }
     .msg.err{ color: var(--err); }
 
@@ -219,13 +324,18 @@
       background: rgba(15,22,48,.45);
       color: var(--text);
       font-size:12px;
-      padding:7px 10px;
+      padding:8px 10px;
       border-radius:999px;
       cursor:pointer;
       transition:.15s ease;
+      touch-action: manipulation;
+      min-height: 36px;
+      display:inline-flex;
+      align-items:center;
     }
     .tag:hover{ border-color: rgba(122,167,255,.85); transform: translateY(-1px); }
 
+    /* Table-like list (desktop) */
     .list{
       width:100%;
       border-radius:14px;
@@ -233,26 +343,28 @@
       border:1px solid rgba(42,58,102,.6);
       background: rgba(15,22,48,.35);
     }
+
     .row{
       display:grid;
-      grid-template-columns: 1.2fr 1.2fr 1fr 120px;
+      grid-template-columns: 1.2fr 1.2fr 1fr 140px;
       gap:10px;
       padding:12px;
       border-bottom:1px solid rgba(42,58,102,.45);
       align-items:center;
     }
+
     .row.header{
       font-size:12px;
       color:var(--muted);
       background: rgba(10,15,32,.35);
-      font-weight:700;
+      font-weight:800;
     }
+
+    .row.admin{ grid-template-columns: 1fr 1.25fr 0.9fr 340px; }
+
     .cell{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cell a{ color: var(--accent); }
     .actions{ display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
-
-    /* ADMIN: mais espaço para botões */
-    .row.admin{ grid-template-columns: 1fr 1.25fr 0.9fr 320px; }
 
     .badge{
       display:inline-flex;
@@ -264,6 +376,7 @@
       background: rgba(10,15,32,.35);
       color: var(--muted);
       gap: 6px;
+      white-space: nowrap;
     }
     .badge.ok{ color: var(--ok); border-color: rgba(56,211,159,.45); }
     .badge.warn{ color: var(--warn); border-color: rgba(255,209,102,.45); }
@@ -271,6 +384,66 @@
     .badge.admin{ color: #7aa7ff; border-color: rgba(122,167,255,.55); }
 
     .hint{ margin-top:10px; color:var(--muted); font-size:12px; line-height:1.35; }
+
+    /* ============== MOBILE BREAKPOINTS ============== */
+    @media (max-width: 980px){
+      .userbox{ min-width: 0; }
+      .brand{ min-width: 0; }
+    }
+
+    @media (max-width: 720px){
+      .nav{ display:none; }
+      .hamburger{ display:inline-flex; align-items:center; gap:10px; }
+      .mobile-drawer{ display:block; }
+      .brand{ min-width: 0; }
+      .userbox{ min-width: 0; gap:8px; }
+      .userbox .logged .email{ display:none; } /* evita poluir no mobile */
+      .pill.count{ padding:7px 10px; }
+
+      .row2{ grid-template-columns: 1fr; }
+
+      /* Listas viram cards */
+      .list{ border:none; background: transparent; }
+      .row.header{ display:none; }
+
+      .row{
+        grid-template-columns: 1fr;
+        border: 1px solid rgba(42,58,102,.6);
+        border-radius: 16px;
+        background: rgba(15,22,48,.35);
+        margin-bottom: 10px;
+      }
+
+      .row.admin{ grid-template-columns: 1fr; }
+
+      .cell{
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+      }
+
+      .cell[data-label]{
+        display:flex;
+        gap:10px;
+        align-items:flex-start;
+      }
+      .cell[data-label]::before{
+        content: attr(data-label);
+        min-width: 92px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .actions{
+        justify-content:flex-start;
+        margin-top: 6px;
+      }
+
+      .actions .btn{ width: 100%; }
+      .actions .btn.small{ width: 100%; }
+    }
+
   </style>
 </head>
 <body>
@@ -283,7 +456,11 @@
       </div>
     </div>
 
-    <nav class="nav">
+    <button id="hamburger" class="hamburger" type="button" aria-expanded="false" aria-controls="drawer">
+      ☰ Menu
+    </button>
+
+    <nav class="nav" aria-label="Menu principal">
       <button id="navHome" class="active" type="button">HOME</button>
       <button id="navSearch" type="button">PESQUISAR</button>
       <button id="navSongs" type="button">MUSICAS</button>
@@ -299,13 +476,25 @@
       <button id="logoutBtn" class="logout" type="button">Sair</button>
     </div>
   </div>
+
+  <!-- Drawer mobile -->
+  <div class="mobile-drawer" id="drawerWrap" style="display:none;">
+    <div class="drawer" id="drawer">
+      <div class="drawer-nav">
+        <button id="mHome" class="active" type="button">HOME</button>
+        <button id="mSearch" type="button">PESQUISAR</button>
+        <button id="mSongs" type="button">MUSICAS</button>
+        <button id="mAdmin" type="button" style="display:none;">ADMIN</button>
+      </div>
+    </div>
+  </div>
 </header>
 
 <main class="wrap">
   <section class="hero">
     <div>
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>Cadastro compartilhado. Edição: <b>Admin</b>, <b>SUPER</b> ou <b>Autor</b>. Usuários precisam de aprovação.</p>
+      <p>Compatível com celular (Android/iPhone). Edição: <b>Admin</b>, <b>SUPER</b> ou <b>Autor</b>.</p>
     </div>
   </section>
 
@@ -338,11 +527,11 @@
           <div class="row2">
             <div>
               <label for="tom">Tom</label>
-              <input id="tom" placeholder="Ex: +1 ou 1/2 ou -! o tom que vc usa" />
+              <input id="tom" placeholder="Ex: +1 ou 1/2 ou -1 o tom que vc usa para cantar" />
             </div>
             <div>
               <label for="link">Link</label>
-              <input id="link" placeholder="Cole o link aqui do karaoke que vc usa (http/https)" />
+              <input id="link" placeholder="Cole o link do Youtube aqui (http/https)" />
             </div>
           </div>
 
@@ -413,7 +602,7 @@
       <div class="card-header">
         <div>
           <p class="title">Admin • Usuários (todos)</p>
-          <p class="subtitle">Aprovar/Negar e definir SUPER. SUPER edita músicas de qualquer autor, mas não aprova usuários.</p>
+          <p class="subtitle">Aprovar/Deletar e definir SUPER. SUPER edita músicas de qualquer autor.</p>
         </div>
         <div class="actions">
           <button id="refreshUsersBtn" class="btn secondary small" type="button">Atualizar</button>
@@ -424,7 +613,7 @@
         <div class="list" id="usersList"></div>
         <div id="msgAdmin" class="msg"></div>
         <div class="hint">
-          Link do e-mail aprova via token seguro e expira (24h): <b>?approve=TOKEN</b>
+          Link do e-mail aprova via token e expira (24h): <b>?approve=TOKEN</b>
         </div>
       </div>
     </div>
@@ -434,18 +623,25 @@
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
 
-  // Tabs
+  // Desktop nav
   const navHome = document.getElementById("navHome");
   const navSearch = document.getElementById("navSearch");
   const navSongs = document.getElementById("navSongs");
   const navAdmin = document.getElementById("navAdmin");
+
+  // Mobile nav
+  const hamburger = document.getElementById("hamburger");
+  const drawerWrap = document.getElementById("drawerWrap");
+  const mHome = document.getElementById("mHome");
+  const mSearch = document.getElementById("mSearch");
+  const mSongs = document.getElementById("mSongs");
+  const mAdmin = document.getElementById("mAdmin");
 
   const viewHome = document.getElementById("viewHome");
   const viewSearch = document.getElementById("viewSearch");
   const viewSongs = document.getElementById("viewSongs");
   const viewAdmin = document.getElementById("viewAdmin");
 
-  // UI
   const userNameEl = document.getElementById("userName");
   const userEmailEl = document.getElementById("userEmail");
   const countEl = document.getElementById("count");
@@ -503,11 +699,36 @@
     return data;
   }
 
+  function closeDrawer() {
+    drawerWrap.style.display = "none";
+    hamburger.setAttribute("aria-expanded", "false");
+  }
+  function toggleDrawer() {
+    const open = drawerWrap.style.display !== "none";
+    drawerWrap.style.display = open ? "none" : "block";
+    hamburger.setAttribute("aria-expanded", open ? "false" : "true");
+  }
+
+  hamburger.onclick = toggleDrawer;
+
+  // fecha drawer clicando fora
+  document.addEventListener("click", (e) => {
+    if (window.innerWidth > 720) return;
+    if (drawerWrap.style.display === "none") return;
+    const within = e.target.closest("#drawerWrap") || e.target.closest("#hamburger");
+    if (!within) closeDrawer();
+  });
+
+  // fecha drawer ao mudar orientação/tamanho
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 720) closeDrawer();
+  });
+
   function setActive(tab) {
-    navHome.classList.remove("active");
-    navSearch.classList.remove("active");
-    navSongs.classList.remove("active");
-    navAdmin.classList.remove("active");
+    // desktop active
+    [navHome, navSearch, navSongs, navAdmin].forEach(b => b.classList.remove("active"));
+    // mobile active
+    [mHome, mSearch, mSongs, mAdmin].forEach(b => b.classList.remove("active"));
 
     viewHome.style.display = "none";
     viewSearch.style.display = "none";
@@ -515,28 +736,39 @@
     viewAdmin.style.display = "none";
 
     if (tab === "home") {
-      navHome.classList.add("active");
+      navHome.classList.add("active"); mHome.classList.add("active");
       viewHome.style.display = "";
       document.title = "Home";
     } else if (tab === "search") {
-      navSearch.classList.add("active");
+      navSearch.classList.add("active"); mSearch.classList.add("active");
       viewSearch.style.display = "";
       document.title = "Pesquisar";
     } else if (tab === "songs") {
-      navSongs.classList.add("active");
+      navSongs.classList.add("active"); mSongs.classList.add("active");
       viewSongs.style.display = "";
       document.title = "Músicas";
     } else {
-      navAdmin.classList.add("active");
+      navAdmin.classList.add("active"); mAdmin.classList.add("active");
       viewAdmin.style.display = "";
       document.title = "Admin";
     }
+
+    closeDrawer();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  navHome.onclick = () => setActive("home");
-  navSearch.onclick = () => setActive("search");
-  navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
-  navAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
+  function bindNav() {
+    navHome.onclick = () => setActive("home");
+    navSearch.onclick = () => setActive("search");
+    navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
+    navAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
+
+    mHome.onclick = () => setActive("home");
+    mSearch.onclick = () => setActive("search");
+    mSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
+    mAdmin.onclick = async () => { setActive("admin"); await loadAllUsers(); };
+  }
+  bindNav();
 
   logoutBtn.onclick = async () => {
     try { await fetch(`${API_BASE}/api/logout`, { method:"POST", credentials:"include" }); } catch {}
@@ -549,7 +781,11 @@
       const badge = ME.is_admin ? " (ADMIN)" : (ME.is_super ? " (SUPER)" : "");
       userNameEl.textContent = (ME.name || ME.email || "—") + badge;
       userEmailEl.textContent = ME.name ? ME.email : "";
-      if (ME.is_admin) navAdmin.style.display = "";
+
+      if (ME.is_admin) {
+        navAdmin.style.display = "";
+        mAdmin.style.display = "";
+      }
     } catch {
       window.location.href = "index.html";
     }
@@ -591,17 +827,14 @@
   saveBtn.onclick = async () => {
     const cantor = cantorEl.value.trim();
     const musica = musicaEl.value.trim();
-
     if (!cantor || !musica) {
       setMsg(msgHome, "❌ Preencha cantor e música.", "err");
       return;
     }
-
     setMsg(msgHome, "Salvando...", "");
     try {
       const payloadSong = { cantor, musica, tom: tomEl.value.trim(), link: linkEl.value.trim() };
       const editId = editIdEl.value.trim();
-
       if (editId) {
         await api(`/api/songs/${encodeURIComponent(editId)}`, { method: "PUT", body: JSON.stringify(payloadSong) });
         setMsg(msgHome, "✅ Alterações salvas!", "ok");
@@ -611,7 +844,6 @@
         setMsg(msgHome, "✅ Música cadastrada!", "ok");
         cantorEl.value = ""; musicaEl.value = ""; tomEl.value = ""; linkEl.value = "";
       }
-
       await refreshCount();
     } catch (e) {
       setMsg(msgHome, "❌ " + e.message, "err");
@@ -619,7 +851,10 @@
   };
 
   // SEARCH
+  function isMobile() { return window.innerWidth <= 720; }
+
   function renderSearchHeader() {
+    if (isMobile()) { searchListEl.innerHTML = ""; return; }
     searchListEl.innerHTML = `
       <div class="row header">
         <div class="cell">Cantor</div>
@@ -629,21 +864,36 @@
       </div>
     `;
   }
+
   function appendSearchRow(song) {
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-    row.innerHTML = `
-      <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
-      <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
-      <div class="cell" title="${song.link || ""}">${linkHtml}</div>
-      <div class="actions">
-        <button class="btn secondary small" type="button" data-edit="${song.id}">Editar</button>
-      </div>
-    `;
+
+    if (isMobile()) {
+      row.innerHTML = `
+        <div class="cell" data-label="Cantor">${song.cantor || ""}</div>
+        <div class="cell" data-label="Música">${song.musica || ""}</div>
+        <div class="cell" data-label="Link">${linkHtml}</div>
+        <div class="actions">
+          <button class="btn secondary small" type="button" data-edit="${song.id}">Editar</button>
+        </div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
+        <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
+        <div class="cell" title="${song.link || ""}">${linkHtml}</div>
+        <div class="actions">
+          <button class="btn secondary small" type="button" data-edit="${song.id}">Editar</button>
+        </div>
+      `;
+    }
+
     row.querySelector("[data-edit]").onclick = () => enterEditMode(song);
     searchListEl.appendChild(row);
   }
+
   async function carregarResultados(q = "") {
     setMsg(msgSearch, "", "");
     renderSearchHeader();
@@ -657,6 +907,7 @@
     }
     for (const s of items) appendSearchRow(s);
   }
+
   async function carregarSugestoes(q) {
     sugestoesEl.innerHTML = "";
     if (!q) return;
@@ -672,10 +923,11 @@
       }
     } catch {}
   }
-  let t = null;
+
+  let tt = null;
   buscaEl.addEventListener("input", () => {
-    clearTimeout(t);
-    t = setTimeout(async () => {
+    clearTimeout(tt);
+    tt = setTimeout(async () => {
       const q = buscaEl.value.trim();
       await carregarSugestoes(q);
       await carregarResultados(q);
@@ -684,6 +936,7 @@
 
   // SONGS pagination
   function renderSongsHeader() {
+    if (isMobile()) { songsListEl.innerHTML = ""; return; }
     songsListEl.innerHTML = `
       <div class="row header">
         <div class="cell">Cantor</div>
@@ -693,23 +946,39 @@
       </div>
     `;
   }
+
   function appendSongsRow(song) {
     const row = document.createElement("div");
     row.className = "row";
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
-    row.innerHTML = `
-      <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
-      <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
-      <div class="cell" title="${song.link || ""}">${linkHtml}</div>
-      <div class="actions">
-        <button class="btn secondary small" type="button">Editar</button>
-      </div>
-    `;
+
+    if (isMobile()) {
+      row.innerHTML = `
+        <div class="cell" data-label="Cantor">${song.cantor || ""}</div>
+        <div class="cell" data-label="Música">${song.musica || ""}</div>
+        <div class="cell" data-label="Link">${linkHtml}</div>
+        <div class="actions">
+          <button class="btn secondary small" type="button">Editar</button>
+        </div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
+        <div class="cell" title="${song.musica || ""}">${song.musica || ""}</div>
+        <div class="cell" title="${song.link || ""}">${linkHtml}</div>
+        <div class="actions">
+          <button class="btn secondary small" type="button">Editar</button>
+        </div>
+      `;
+    }
+
     row.querySelector("button").onclick = () => enterEditMode(song);
     songsListEl.appendChild(row);
   }
+
   function renderPager({ page, totalPages, total }) {
     pagerEl.innerHTML = "";
+
     const wrap = document.createElement("div");
     wrap.style.display = "flex";
     wrap.style.justifyContent = "space-between";
@@ -740,8 +1009,8 @@
     }
 
     right.appendChild(pageBtn("◀", () => loadSongsPage(page-1), page<=1));
-    const start = Math.max(1, page-3);
-    const end = Math.min(totalPages, start+6);
+    const start = Math.max(1, page-2);
+    const end = Math.min(totalPages, start+4);
     for (let p=start; p<=end; p++){
       right.appendChild(pageBtn(String(p), () => loadSongsPage(p), false, p===page));
     }
@@ -751,239 +1020,11 @@
     wrap.appendChild(right);
     pagerEl.appendChild(wrap);
   }
+
   async function loadSongsPage(page) {
     setMsg(msgSongs, "", "");
     renderSongsHeader();
+
     const row = document.createElement("div");
     row.className = "row";
-    row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
-    songsListEl.appendChild(row);
-
-    try {
-      const data = await api(`/api/songs/page?page=${encodeURIComponent(page)}&limit=20`, { method:"GET" });
-      renderSongsHeader();
-      if (!data.items || data.items.length === 0) {
-        const r = document.createElement("div");
-        r.className = "row";
-        r.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhuma música cadastrada</div>`;
-        songsListEl.appendChild(r);
-      } else {
-        for (const s of data.items) appendSongsRow(s);
-      }
-      renderPager(data);
-    } catch (e) {
-      renderSongsHeader();
-      const r = document.createElement("div");
-      r.className = "row";
-      r.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar</div>`;
-      songsListEl.appendChild(r);
-      setMsg(msgSongs, "❌ " + e.message, "err");
-    }
-  }
-
-  pdfBtn.onclick = async () => {
-    setMsg(msgSongs, "Gerando PDF...", "");
-    try {
-      const r = await fetch(`${API_BASE}/api/songs/pdf`, { method:"GET", credentials:"include" });
-      if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        throw new Error(data.error || "Erro ao gerar PDF");
-      }
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "musicas.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      setMsg(msgSongs, "✅ PDF gerado!", "ok");
-    } catch (e) {
-      setMsg(msgSongs, "❌ " + e.message, "err");
-    }
-  };
-
-  // ADMIN: listar TODOS usuários
-  function formatDate(iso) {
-    try { return new Date(iso).toLocaleString("pt-BR"); }
-    catch { return iso || ""; }
-  }
-
-  function badgeForUser(u) {
-    if (u.is_admin) return `<span class="badge admin">👑 ADMIN</span>`;
-    if (!u.is_approved) return `<span class="badge warn">⏳ PENDENTE</span>`;
-    if (u.is_super) return `<span class="badge super">✨ SUPER</span>`;
-    return `<span class="badge ok">✅ APROVADO</span>`;
-  }
-
-  function renderUsersHeader() {
-    usersListEl.innerHTML = `
-      <div class="row header admin">
-        <div class="cell">Nome</div>
-        <div class="cell">Email</div>
-        <div class="cell">Status</div>
-        <div class="cell" style="text-align:right;">Ações</div>
-      </div>
-    `;
-  }
-
-  async function doApprove(id) {
-    setMsg(msgAdmin, "Aprovando...", "");
-    await api(`/api/admin/approve/${encodeURIComponent(id)}`, { method:"POST" });
-    setMsg(msgAdmin, "✅ Usuário aprovado!", "ok");
-    await loadAllUsers();
-  }
-
-  async function doApproveSuper(id) {
-    const ok = confirm("Aprovar como SUPER? Ele poderá editar músicas de qualquer autor (mas não aprova usuários).");
-    if (!ok) return;
-    setMsg(msgAdmin, "Aprovando como SUPER...", "");
-    await api(`/api/admin/approve-super/${encodeURIComponent(id)}`, { method:"POST" });
-    setMsg(msgAdmin, "✅ Usuário aprovado como SUPER!", "ok");
-    await loadAllUsers();
-  }
-
-  async function doToggleSuper(id, makeSuper) {
-    const txt = makeSuper ? "Tornar SUPER? (vai editar músicas de qualquer autor)" : "Remover SUPER?";
-    const ok = confirm(txt);
-    if (!ok) return;
-    setMsg(msgAdmin, makeSuper ? "Marcando como SUPER..." : "Removendo SUPER...", "");
-    await api(`/api/admin/set-super/${encodeURIComponent(id)}`, {
-      method:"POST",
-      body: JSON.stringify({ is_super: !!makeSuper })
-    });
-    setMsg(msgAdmin, makeSuper ? "✅ Usuário virou SUPER." : "✅ SUPER removido.", "ok");
-    await loadAllUsers();
-  }
-
-  async function doDeny(id) {
-    const ok = confirm("Negar e DELETAR este usuário? Isso remove o usuário do sistema.");
-    if (!ok) return;
-    setMsg(msgAdmin, "Deletando usuário...", "");
-    await api(`/api/admin/deny/${encodeURIComponent(id)}`, { method:"POST" });
-    setMsg(msgAdmin, "✅ Usuário deletado.", "ok");
-    await loadAllUsers();
-  }
-
-  function appendUserRow(u) {
-    const row = document.createElement("div");
-    row.className = "row admin";
-
-    const status = badgeForUser(u);
-
-    let actionsHtml = "";
-    if (u.is_admin) {
-      actionsHtml = `<span class="badge admin">Protegido</span>`;
-    } else if (!u.is_approved) {
-      actionsHtml = `
-        <button class="btn small" data-approve="${u.id}">Aprovar</button>
-        <button class="btn secondary small" data-approve-super="${u.id}">Aprovar SUPER</button>
-        <button class="btn danger small" data-deny="${u.id}">Negar</button>
-      `;
-    } else {
-      actionsHtml = `
-        ${u.is_super
-          ? `<button class="btn secondary small" data-super-off="${u.id}">Remover SUPER</button>`
-          : `<button class="btn secondary small" data-super-on="${u.id}">Tornar SUPER</button>`
-        }
-        <button class="btn danger small" data-deny="${u.id}">Deletar</button>
-      `;
-    }
-
-    row.innerHTML = `
-      <div class="cell" title="${u.name || ""}">${u.name || ""}</div>
-      <div class="cell" title="${u.email || ""}">${u.email || ""}</div>
-      <div class="cell" title="${formatDate(u.created_at)}">
-        ${status}
-      </div>
-      <div class="actions">${actionsHtml}</div>
-    `;
-
-    const bApprove = row.querySelector("[data-approve]");
-    if (bApprove) bApprove.onclick = () => doApprove(u.id);
-
-    const bApproveSuper = row.querySelector("[data-approve-super]");
-    if (bApproveSuper) bApproveSuper.onclick = () => doApproveSuper(u.id);
-
-    const bSuperOn = row.querySelector("[data-super-on]");
-    if (bSuperOn) bSuperOn.onclick = () => doToggleSuper(u.id, true);
-
-    const bSuperOff = row.querySelector("[data-super-off]");
-    if (bSuperOff) bSuperOff.onclick = () => doToggleSuper(u.id, false);
-
-    const bDeny = row.querySelector("[data-deny]");
-    if (bDeny) bDeny.onclick = () => doDeny(u.id);
-
-    usersListEl.appendChild(row);
-  }
-
-  async function loadAllUsers() {
-    setMsg(msgAdmin, "", "");
-    renderUsersHeader();
-
-    const loadingRow = document.createElement("div");
-    loadingRow.className = "row admin";
-    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando usuários...</div>`;
-    usersListEl.appendChild(loadingRow);
-
-    try {
-      const users = await api("/api/admin/users", { method:"GET" });
-      renderUsersHeader();
-
-      if (!users.length) {
-        const row = document.createElement("div");
-        row.className = "row admin";
-        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhum usuário encontrado</div>`;
-        usersListEl.appendChild(row);
-        return;
-      }
-
-      for (const u of users) appendUserRow(u);
-    } catch (e) {
-      renderUsersHeader();
-      const row = document.createElement("div");
-      row.className = "row admin";
-      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar usuários</div>`;
-      usersListEl.appendChild(row);
-      setMsg(msgAdmin, "❌ " + e.message, "err");
-    }
-  }
-
-  refreshUsersBtn.onclick = loadAllUsers;
-
-  async function approveFromUrlIfNeeded() {
-    const params = new URLSearchParams(window.location.search);
-    const approveTok = params.get("approve");
-    if (!approveTok) return;
-
-    if (!ME?.is_admin) {
-      history.replaceState({}, "", window.location.pathname);
-      return;
-    }
-
-    setActive("admin");
-    setMsg(msgAdmin, "Aprovando via link...", "");
-
-    try {
-      await api(`/api/admin/approve-token/${encodeURIComponent(approveTok)}`, { method: "POST" });
-      setMsg(msgAdmin, "✅ Usuário aprovado via link!", "ok");
-      await loadAllUsers();
-    } catch (e) {
-      setMsg(msgAdmin, "❌ " + e.message, "err");
-    } finally {
-      history.replaceState({}, "", window.location.pathname);
-    }
-  }
-
-  // INIT
-  (async () => {
-    await loadMeOrRedirect();
-    await refreshCount();
-    renderSearchHeader();
-    await approveFromUrlIfNeeded();
-  })();
-</script>
-
-</body>
-</html>
+    row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--
