@@ -386,8 +386,6 @@
       border-color: rgba(122,167,255,.95);
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
     }
-
-    /* Admin list: 5 colunas */
     .row.admin{
       grid-template-columns: 1fr 1.2fr 0.8fr 120px;
     }
@@ -431,9 +429,7 @@
   <section class="hero">
     <div>
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>
-        Cadastro é compartilhado. Usuários precisam de aprovação do admin para acessar.
-      </p>
+      <p>Cadastro é compartilhado. Edição: <b>Admin</b> ou <b>Autor</b>. Usuários precisam de aprovação.</p>
     </div>
   </section>
 
@@ -468,11 +464,11 @@
           <div class="row2">
             <div>
               <label for="tom">Tom</label>
-              <input id="tom" placeholder="Ex: +1 ou 1/2 ou -1" />
+              <input id="tom" placeholder="Ex: Am / C / D" />
             </div>
             <div>
               <label for="link">Link</label>
-              <input id="link" placeholder="Cole o link aqui" />
+              <input id="link" placeholder="Cole o link aqui (http/https)" />
             </div>
           </div>
 
@@ -554,7 +550,7 @@
         <div class="list" id="pendingList"></div>
         <div id="msgAdmin" class="msg"></div>
         <div class="hint">
-          Dica: também dá pra aprovar pelo link do e-mail: <b>dashboard.html?approve=ID</b>
+          Dica: link do e-mail aprova via token seguro e expira (24h): <b>?approve=TOKEN</b>
         </div>
       </div>
     </div>
@@ -564,9 +560,6 @@
 
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
-
-  const token = localStorage.getItem("token");
-  if (!token) window.location.href = "index.html";
 
   // Tabs
   const navHome = document.getElementById("navHome");
@@ -585,7 +578,7 @@
   const countEl = document.getElementById("count");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // HOME form
+  // HOME
   const cantorEl = document.getElementById("cantor");
   const musicaEl = document.getElementById("musica");
   const tomEl = document.getElementById("tom");
@@ -614,6 +607,8 @@
   const msgAdmin = document.getElementById("msgAdmin");
   const refreshPendingBtn = document.getElementById("refreshPendingBtn");
 
+  let ME = null; // {id,name,email,is_admin}
+
   function setMsg(el, text, type) {
     el.classList.remove("ok", "err");
     if (type === "ok") el.classList.add("ok");
@@ -626,9 +621,9 @@
       ...opts,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
         ...(opts.headers || {})
-      }
+      },
+      credentials: "include"
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || "Erro na API");
@@ -670,29 +665,20 @@
   navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
   navAdmin.onclick = async () => { setActive("admin"); await loadPending(); };
 
-  logoutBtn.onclick = () => {
-    localStorage.removeItem("token");
+  logoutBtn.onclick = async () => {
+    try { await fetch(`${API_BASE}/api/logout`, { method:"POST", credentials:"include" }); } catch {}
     window.location.href = "index.html";
   };
 
-  function parseJwtPayload(tok) {
+  async function loadMeOrRedirect() {
     try {
-      const parts = tok.split(".");
-      if (parts.length !== 3) return {};
-      return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    } catch {
-      return {};
+      ME = await api("/api/me", { method:"GET" });
+      userNameEl.textContent = ME.name || ME.email || "—";
+      userEmailEl.textContent = ME.name ? ME.email : "";
+      if (ME.is_admin) navAdmin.style.display = "";
+    } catch (e) {
+      window.location.href = "index.html";
     }
-  }
-
-  const payload = parseJwtPayload(token);
-  const isAdmin = !!payload.is_admin;
-
-  function showLoggedFromToken() {
-    const name = (payload.name || "").trim();
-    const email = (payload.email || "").trim();
-    userNameEl.textContent = name ? name : (email || "—");
-    userEmailEl.textContent = name ? email : ""; // se tiver nome, mostra email embaixo
   }
 
   async function refreshCount() {
@@ -700,7 +686,7 @@
     countEl.textContent = String(items.length);
   }
 
-  // ===== HOME: CREATE/UPDATE =====
+  // HOME: edit
   function enterEditMode(song) {
     setActive("home");
     editIdEl.value = String(song.id);
@@ -713,7 +699,7 @@
     saveBtn.textContent = "Salvar alterações";
     cancelEditBtn.style.display = "";
     homeTitle.textContent = "Editar música";
-    homeSubtitle.textContent = "Altere os campos e clique em “Salvar alterações”.";
+    homeSubtitle.textContent = "Admin ou autor podem editar.";
     setMsg(msgHome, "", "");
   }
 
@@ -778,7 +764,7 @@
     }
   };
 
-  // ===== PESQUISAR =====
+  // SEARCH
   function renderSearchHeader() {
     searchListEl.innerHTML = `
       <div class="row header">
@@ -793,7 +779,7 @@
   function appendSearchRow(song) {
     const row = document.createElement("div");
     row.className = "row";
-    const linkHtml = song.link ? `<a href="${song.link}" target="_blank">abrir</a>` : "-";
+    const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
 
     row.innerHTML = `
       <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
@@ -857,7 +843,7 @@
     }, 220);
   });
 
-  // ===== MUSICAS: paginação A-Z =====
+  // SONGS pagination
   function renderSongsHeader() {
     songsListEl.innerHTML = `
       <div class="row header">
@@ -872,7 +858,7 @@
   function appendSongsRow(song) {
     const row = document.createElement("div");
     row.className = "row";
-    const linkHtml = song.link ? `<a href="${song.link}" target="_blank">abrir</a>` : "-";
+    const linkHtml = song.link ? `<a href="${song.link}" target="_blank" rel="noopener">abrir</a>` : "-";
 
     row.innerHTML = `
       <div class="cell" title="${song.cantor || ""}">${song.cantor || ""}</div>
@@ -966,7 +952,7 @@
     try {
       const r = await fetch(`${API_BASE}/api/songs/pdf`, {
         method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
+        credentials: "include"
       });
 
       if (!r.ok) {
@@ -991,7 +977,7 @@
     }
   };
 
-  // ===== ADMIN =====
+  // ADMIN
   function renderPendingHeader() {
     pendingListEl.innerHTML = `
       <div class="row header admin">
@@ -1004,12 +990,8 @@
   }
 
   function formatDate(iso) {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString("pt-BR");
-    } catch {
-      return iso || "";
-    }
+    try { return new Date(iso).toLocaleString("pt-BR"); }
+    catch { return iso || ""; }
   }
 
   function appendPendingRow(u) {
@@ -1074,11 +1056,11 @@
 
   async function approveFromUrlIfNeeded() {
     const params = new URLSearchParams(window.location.search);
-    const approveId = params.get("approve");
-    if (!approveId) return;
+    const approveTok = params.get("approve");
+    if (!approveTok) return;
 
-    if (!isAdmin) {
-      // remove parâmetro para não ficar no URL
+    // Só admin consegue aprovar
+    if (!ME?.is_admin) {
       history.replaceState({}, "", window.location.pathname);
       return;
     }
@@ -1087,25 +1069,23 @@
     setMsg(msgAdmin, "Aprovando via link...", "");
 
     try {
-      await api(`/api/admin/approve/${encodeURIComponent(approveId)}`, { method: "POST" });
+      await api(`/api/admin/approve-token/${encodeURIComponent(approveTok)}`, { method: "POST" });
       setMsg(msgAdmin, "✅ Usuário aprovado via link!", "ok");
       await loadPending();
     } catch (e) {
       setMsg(msgAdmin, "❌ " + e.message, "err");
     } finally {
-      history.replaceState({}, "", window.location.pathname); // limpa ?approve=
+      history.replaceState({}, "", window.location.pathname);
     }
   }
 
-  // ===== INIT =====
-  showLoggedFromToken();
-
-  // Aba admin só aparece para admin
-  if (isAdmin) navAdmin.style.display = "";
-
-  refreshCount();
-  renderSearchHeader();
-  approveFromUrlIfNeeded();
+  // INIT
+  (async () => {
+    await loadMeOrRedirect();
+    await refreshCount();
+    renderSearchHeader();
+    await approveFromUrlIfNeeded();
+  })();
 </script>
 
 </body>

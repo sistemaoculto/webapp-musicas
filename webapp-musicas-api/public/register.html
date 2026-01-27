@@ -74,7 +74,7 @@
   <div class="card">
     <div class="header">
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>Cadastro (precisa de aprovação do administrador)</p>
+      <p>Cadastro (precisa de aprovação do admin)</p>
     </div>
 
     <div class="body">
@@ -85,7 +85,7 @@
       <input id="email" type="email" placeholder="seuemail@exemplo.com" />
 
       <label for="password">Senha</label>
-      <input id="password" type="password" placeholder="Sua senha" />
+      <input id="password" type="password" placeholder="Mínimo 8 caracteres" />
 
       <button id="registerBtn" class="btn" type="button">Cadastrar</button>
       <div id="msg" class="msg"></div>
@@ -116,6 +116,7 @@
       const r = await fetch(`${API_BASE}/api/register`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
+        credentials: "include",
         body: JSON.stringify({ name, email, password })
       });
 
@@ -127,8 +128,7 @@
         return;
       }
 
-      // Caso seja admin, entra direto
-      localStorage.setItem("token", data.token);
+      // Se for admin, entra direto
       window.location.href = "dashboard.html";
     } catch (e) {
       setMsg("❌ " + e.message, "err");
