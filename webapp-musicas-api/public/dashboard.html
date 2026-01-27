@@ -698,8 +698,8 @@
   }
 
   async function refreshCount(){
-    const items = await api("/api/songs", { method:"GET" });
-    countEl.textContent = String(items.length);
+    const data = await api("/api/songs/count", { method:"GET" });
+    countEl.textContent = String(data.total ?? 0);
   }
 
   /* ===================== HOME (songs create/edit) ===================== */
