@@ -104,7 +104,7 @@
       align-items:center;
       gap:10px;
       justify-content:flex-end;
-      min-width: 260px;
+      min-width: 280px;
     }
     .userbox .logged{
       text-align:right;
@@ -115,14 +115,23 @@
       color: var(--muted);
       margin-bottom: 2px;
     }
-    .userbox .logged .email{
+    .userbox .logged .name{
       font-size: 12px;
       color: var(--text);
-      opacity: .95;
+      opacity: .98;
       max-width: 210px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .userbox .logged .email{
+      font-size: 11px;
+      color: var(--muted);
+      max-width: 210px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 3px;
     }
     .logout{
       border:none;
@@ -281,7 +290,6 @@
     .msg.ok{ color: var(--ok); }
     .msg.err{ color: var(--err); }
 
-    /* Pesquisar / Músicas */
     .searchBox{
       width: min(900px, 100%);
       display:grid;
@@ -378,6 +386,17 @@
       border-color: rgba(122,167,255,.95);
       background: linear-gradient(135deg, rgba(122,167,255,.22), rgba(167,139,250,.20));
     }
+
+    /* Admin list: 5 colunas */
+    .row.admin{
+      grid-template-columns: 1fr 1.2fr 0.8fr 120px;
+    }
+    .hint{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body>
@@ -385,7 +404,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <div class="pill count" title="Quantidade de músicas cadastradas">
+      <div class="pill count" title="Quantidade de músicas cadastradas (compartilhado)">
         🎵 <span>Total: <b id="count">0</b></span>
       </div>
     </div>
@@ -394,11 +413,13 @@
       <button id="navHome" class="active" type="button">HOME</button>
       <button id="navSearch" type="button">PESQUISAR</button>
       <button id="navSongs" type="button">MUSICAS</button>
+      <button id="navAdmin" type="button" style="display:none;">ADMIN</button>
     </nav>
 
     <div class="userbox">
       <div class="logged">
         <div class="label">Logado como</div>
+        <div class="name" id="userName">—</div>
         <div class="email" id="userEmail">—</div>
       </div>
       <button id="logoutBtn" class="logout" type="button">Sair</button>
@@ -411,8 +432,7 @@
     <div>
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
       <p>
-        Cadastre no <b>HOME</b>. Pesquise com sugestões em <b>PESQUISAR</b>.
-        Veja a lista alfabética e gere PDF em <b>MUSICAS</b>.
+        Cadastro é compartilhado. Usuários precisam de aprovação do admin para acessar.
       </p>
     </div>
   </section>
@@ -423,7 +443,7 @@
       <div class="card-header">
         <div>
           <p class="title" id="homeTitle">Cadastrar música</p>
-          <p class="subtitle" id="homeSubtitle">Preencha e salve. Formulário centralizado e limpo.</p>
+          <p class="subtitle" id="homeSubtitle">Formulário centralizado.</p>
         </div>
         <div class="actions">
           <button id="cancelEditBtn" class="btn secondary small" type="button" style="display:none;">Cancelar edição</button>
@@ -432,7 +452,6 @@
 
       <div class="card-body center">
         <div class="form">
-          <!-- usado para edição -->
           <input type="hidden" id="editId" value="" />
 
           <div class="row2">
@@ -470,7 +489,7 @@
       <div class="card-header">
         <div>
           <p class="title">Pesquisar</p>
-          <p class="subtitle">Digite cantor ou música. Clique em <b>Editar</b> para alterar.</p>
+          <p class="subtitle">Digite cantor ou música. Use <b>Editar</b> para alterar.</p>
         </div>
       </div>
 
@@ -503,7 +522,7 @@
       <div class="card-header">
         <div>
           <p class="title">Músicas (A–Z)</p>
-          <p class="subtitle">Mostra 20 por página. Você pode gerar um PDF com todas as músicas.</p>
+          <p class="subtitle">Mostra 20 por página. PDF com todas (sem tom).</p>
         </div>
         <div class="actions">
           <button id="pdfBtn" class="btn small" type="button">Gerar PDF</button>
@@ -517,6 +536,30 @@
       </div>
     </div>
   </section>
+
+  <!-- ADMIN -->
+  <section id="viewAdmin" class="grid" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <p class="title">Admin • Aprovar usuários</p>
+          <p class="subtitle">Lista de usuários pendentes. Você pode aprovar em 1 clique.</p>
+        </div>
+        <div class="actions">
+          <button id="refreshPendingBtn" class="btn secondary small" type="button">Atualizar</button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="list" id="pendingList"></div>
+        <div id="msgAdmin" class="msg"></div>
+        <div class="hint">
+          Dica: também dá pra aprovar pelo link do e-mail: <b>dashboard.html?approve=ID</b>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script>
@@ -529,44 +572,20 @@
   const navHome = document.getElementById("navHome");
   const navSearch = document.getElementById("navSearch");
   const navSongs = document.getElementById("navSongs");
+  const navAdmin = document.getElementById("navAdmin");
 
   const viewHome = document.getElementById("viewHome");
   const viewSearch = document.getElementById("viewSearch");
   const viewSongs = document.getElementById("viewSongs");
-
-  function setActive(tab) {
-    navHome.classList.remove("active");
-    navSearch.classList.remove("active");
-    navSongs.classList.remove("active");
-
-    viewHome.style.display = "none";
-    viewSearch.style.display = "none";
-    viewSongs.style.display = "none";
-
-    if (tab === "home") {
-      navHome.classList.add("active");
-      viewHome.style.display = "";
-      document.title = "Home";
-    } else if (tab === "search") {
-      navSearch.classList.add("active");
-      viewSearch.style.display = "";
-      document.title = "Pesquisar";
-    } else {
-      navSongs.classList.add("active");
-      viewSongs.style.display = "";
-      document.title = "Músicas";
-    }
-  }
-
-  navHome.onclick = () => setActive("home");
-  navSearch.onclick = () => setActive("search");
-  navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
+  const viewAdmin = document.getElementById("viewAdmin");
 
   // UI
+  const userNameEl = document.getElementById("userName");
   const userEmailEl = document.getElementById("userEmail");
   const countEl = document.getElementById("count");
   const logoutBtn = document.getElementById("logoutBtn");
 
+  // HOME form
   const cantorEl = document.getElementById("cantor");
   const musicaEl = document.getElementById("musica");
   const tomEl = document.getElementById("tom");
@@ -578,15 +597,22 @@
   const homeTitle = document.getElementById("homeTitle");
   const homeSubtitle = document.getElementById("homeSubtitle");
 
+  // SEARCH
   const buscaEl = document.getElementById("busca");
   const sugestoesEl = document.getElementById("sugestoes");
   const searchListEl = document.getElementById("searchList");
   const msgSearch = document.getElementById("msgSearch");
 
+  // SONGS
   const songsListEl = document.getElementById("songsList");
   const pagerEl = document.getElementById("pager");
   const msgSongs = document.getElementById("msgSongs");
   const pdfBtn = document.getElementById("pdfBtn");
+
+  // ADMIN
+  const pendingListEl = document.getElementById("pendingList");
+  const msgAdmin = document.getElementById("msgAdmin");
+  const refreshPendingBtn = document.getElementById("refreshPendingBtn");
 
   function setMsg(el, text, type) {
     el.classList.remove("ok", "err");
@@ -609,26 +635,66 @@
     return data;
   }
 
+  function setActive(tab) {
+    navHome.classList.remove("active");
+    navSearch.classList.remove("active");
+    navSongs.classList.remove("active");
+    navAdmin.classList.remove("active");
+
+    viewHome.style.display = "none";
+    viewSearch.style.display = "none";
+    viewSongs.style.display = "none";
+    viewAdmin.style.display = "none";
+
+    if (tab === "home") {
+      navHome.classList.add("active");
+      viewHome.style.display = "";
+      document.title = "Home";
+    } else if (tab === "search") {
+      navSearch.classList.add("active");
+      viewSearch.style.display = "";
+      document.title = "Pesquisar";
+    } else if (tab === "songs") {
+      navSongs.classList.add("active");
+      viewSongs.style.display = "";
+      document.title = "Músicas";
+    } else {
+      navAdmin.classList.add("active");
+      viewAdmin.style.display = "";
+      document.title = "Admin";
+    }
+  }
+
+  navHome.onclick = () => setActive("home");
+  navSearch.onclick = () => setActive("search");
+  navSongs.onclick = async () => { setActive("songs"); await loadSongsPage(1); };
+  navAdmin.onclick = async () => { setActive("admin"); await loadPending(); };
+
   logoutBtn.onclick = () => {
     localStorage.removeItem("token");
     window.location.href = "index.html";
   };
 
-  // Mostrar email pelo token (sem chamar API)
-  function tryShowEmailFromToken() {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (payload && payload.name) {
-      userEmailEl.textContent = payload.name;
-    } else if (payload && payload.email) {
-      userEmailEl.textContent = payload.email;
+  function parseJwtPayload(tok) {
+    try {
+      const parts = tok.split(".");
+      if (parts.length !== 3) return {};
+      return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    } catch {
+      return {};
     }
-  } catch {}
-}
+  }
 
-  // Count (usa listagem simples e conta o tamanho)
+  const payload = parseJwtPayload(token);
+  const isAdmin = !!payload.is_admin;
+
+  function showLoggedFromToken() {
+    const name = (payload.name || "").trim();
+    const email = (payload.email || "").trim();
+    userNameEl.textContent = name ? name : (email || "—");
+    userEmailEl.textContent = name ? email : ""; // se tiver nome, mostra email embaixo
+  }
+
   async function refreshCount() {
     const items = await api("/api/songs", { method: "GET" });
     countEl.textContent = String(items.length);
@@ -661,7 +727,7 @@
     saveBtn.textContent = "Salvar";
     cancelEditBtn.style.display = "none";
     homeTitle.textContent = "Cadastrar música";
-    homeSubtitle.textContent = "Preencha e salve. Formulário centralizado e limpo.";
+    homeSubtitle.textContent = "Formulário centralizado.";
     setMsg(msgHome, "", "");
   }
 
@@ -678,7 +744,7 @@
 
     setMsg(msgHome, "Salvando...", "");
     try {
-      const payload = {
+      const payloadSong = {
         cantor,
         musica,
         tom: tomEl.value.trim(),
@@ -689,14 +755,14 @@
       if (editId) {
         await api(`/api/songs/${encodeURIComponent(editId)}`, {
           method: "PUT",
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payloadSong)
         });
         setMsg(msgHome, "✅ Alterações salvas!", "ok");
         exitEditMode();
       } else {
         await api("/api/songs", {
           method: "POST",
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payloadSong)
         });
         setMsg(msgHome, "✅ Música cadastrada!", "ok");
         cantorEl.value = "";
@@ -706,11 +772,7 @@
       }
 
       await refreshCount();
-
-      // Se estiver na aba músicas, atualiza página 1 (opcional)
-      if (viewSongs.style.display !== "none") {
-        await loadSongsPage(1);
-      }
+      if (viewSongs.style.display !== "none") await loadSongsPage(1);
     } catch (e) {
       setMsg(msgHome, "❌ " + e.message, "err");
     }
@@ -731,7 +793,6 @@
   function appendSearchRow(song) {
     const row = document.createElement("div");
     row.className = "row";
-
     const linkHtml = song.link ? `<a href="${song.link}" target="_blank">abrir</a>` : "-";
 
     row.innerHTML = `
@@ -851,10 +912,8 @@
 
     right.appendChild(prev);
 
-    // mostra até 7 botões de página
     const start = Math.max(1, page - 3);
     const end = Math.min(totalPages, start + 6);
-
     for (let p = start; p <= end; p++) {
       const b = document.createElement("button");
       b.className = "pagebtn" + (p === page ? " active" : "");
@@ -872,6 +931,7 @@
   async function loadSongsPage(page) {
     setMsg(msgSongs, "", "");
     renderSongsHeader();
+
     const loadingRow = document.createElement("div");
     loadingRow.className = "row";
     loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
@@ -901,7 +961,6 @@
     }
   }
 
-  // PDF download
   pdfBtn.onclick = async () => {
     setMsg(msgSongs, "Gerando PDF...", "");
     try {
@@ -932,11 +991,121 @@
     }
   };
 
-  // Init
-  tryShowEmailFromToken();
+  // ===== ADMIN =====
+  function renderPendingHeader() {
+    pendingListEl.innerHTML = `
+      <div class="row header admin">
+        <div class="cell">Nome</div>
+        <div class="cell">Email</div>
+        <div class="cell">Criado em</div>
+        <div class="cell" style="text-align:right;">Ações</div>
+      </div>
+    `;
+  }
+
+  function formatDate(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString("pt-BR");
+    } catch {
+      return iso || "";
+    }
+  }
+
+  function appendPendingRow(u) {
+    const row = document.createElement("div");
+    row.className = "row admin";
+    row.innerHTML = `
+      <div class="cell" title="${u.name || ""}">${u.name || ""}</div>
+      <div class="cell" title="${u.email || ""}">${u.email || ""}</div>
+      <div class="cell" title="${u.created_at || ""}">${formatDate(u.created_at)}</div>
+      <div class="actions">
+        <button class="btn small" type="button" data-approve="${u.id}">Aprovar</button>
+      </div>
+    `;
+
+    row.querySelector("[data-approve]").onclick = async () => {
+      setMsg(msgAdmin, "Aprovando...", "");
+      try {
+        await api(`/api/admin/approve/${encodeURIComponent(u.id)}`, { method: "POST" });
+        setMsg(msgAdmin, "✅ Usuário aprovado!", "ok");
+        await loadPending();
+      } catch (e) {
+        setMsg(msgAdmin, "❌ " + e.message, "err");
+      }
+    };
+
+    pendingListEl.appendChild(row);
+  }
+
+  async function loadPending() {
+    setMsg(msgAdmin, "", "");
+    renderPendingHeader();
+
+    const loadingRow = document.createElement("div");
+    loadingRow.className = "row admin";
+    loadingRow.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Carregando...</div>`;
+    pendingListEl.appendChild(loadingRow);
+
+    try {
+      const pending = await api("/api/admin/pending", { method: "GET" });
+      renderPendingHeader();
+
+      if (!pending.length) {
+        const row = document.createElement("div");
+        row.className = "row admin";
+        row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Nenhum usuário pendente 🎉</div>`;
+        pendingListEl.appendChild(row);
+        return;
+      }
+
+      for (const u of pending) appendPendingRow(u);
+    } catch (e) {
+      renderPendingHeader();
+      const row = document.createElement("div");
+      row.className = "row admin";
+      row.innerHTML = `<div class="cell" style="grid-column:1/-1; color: var(--muted);">Erro ao carregar pendentes</div>`;
+      pendingListEl.appendChild(row);
+      setMsg(msgAdmin, "❌ " + e.message, "err");
+    }
+  }
+
+  refreshPendingBtn.onclick = loadPending;
+
+  async function approveFromUrlIfNeeded() {
+    const params = new URLSearchParams(window.location.search);
+    const approveId = params.get("approve");
+    if (!approveId) return;
+
+    if (!isAdmin) {
+      // remove parâmetro para não ficar no URL
+      history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
+    setActive("admin");
+    setMsg(msgAdmin, "Aprovando via link...", "");
+
+    try {
+      await api(`/api/admin/approve/${encodeURIComponent(approveId)}`, { method: "POST" });
+      setMsg(msgAdmin, "✅ Usuário aprovado via link!", "ok");
+      await loadPending();
+    } catch (e) {
+      setMsg(msgAdmin, "❌ " + e.message, "err");
+    } finally {
+      history.replaceState({}, "", window.location.pathname); // limpa ?approve=
+    }
+  }
+
+  // ===== INIT =====
+  showLoggedFromToken();
+
+  // Aba admin só aparece para admin
+  if (isAdmin) navAdmin.style.display = "";
+
   refreshCount();
-  // prepara a listagem da busca (vazia)
   renderSearchHeader();
+  approveFromUrlIfNeeded();
 </script>
 
 </body>

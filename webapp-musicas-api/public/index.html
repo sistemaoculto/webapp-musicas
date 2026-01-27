@@ -8,9 +8,8 @@
     :root{
       --bg1:#0b1020; --bg2:#101a33;
       --text:#eaf0ff; --muted:#a9b7e6;
-      --stroke:#2a3a66;
       --shadow: 0 18px 55px rgba(0,0,0,.55);
-      --radius: 18px; --radius2: 14px;
+      --radius: 18px;
       --ok:#38d39f; --err:#ff6b6b;
     }
     *{box-sizing:border-box;}
@@ -22,9 +21,7 @@
         radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,.25), transparent 60%),
         radial-gradient(900px 500px at 90% 20%, rgba(167,139,250,.20), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex; align-items:center; justify-content:center;
       padding: 24px 14px;
     }
     .card{
@@ -40,43 +37,22 @@
       border-bottom: 1px solid rgba(42,58,102,.6);
       background: linear-gradient(135deg, rgba(122,167,255,.10), rgba(167,139,250,.08));
     }
-    .header h1{
-      margin:0;
-      font-size: 22px;
-      letter-spacing:.2px;
-    }
-    .header p{
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .header h1{ margin:0; font-size: 22px; }
+    .header p{ margin:6px 0 0; color:var(--muted); font-size:13px; }
     .body{ padding: 18px; }
-    label{
-      font-size: 12px;
-      color: var(--muted);
-      display:block;
-      margin: 8px 0 6px;
-    }
+    label{ font-size:12px; color:var(--muted); display:block; margin: 8px 0 6px; }
     input{
       width:100%;
-      padding: 12px 12px;
+      padding: 12px;
       border-radius: 12px;
       border: 1px solid rgba(42,58,102,.85);
       background: rgba(15,22,48,.55);
       color: var(--text);
       outline:none;
-      transition:.15s ease;
-    }
-    input:focus{
-      border-color: rgba(122,167,255,.85);
-      box-shadow: 0 0 0 4px rgba(122,167,255,.14);
     }
     .btn{
       width:100%;
       margin-top: 14px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
       padding: 12px 14px;
       border-radius: 12px;
       border:1px solid rgba(122,167,255,.75);
@@ -84,26 +60,11 @@
       color: var(--text);
       font-weight: 800;
       cursor:pointer;
-      transition:.15s ease;
     }
-    .btn:hover{
-      transform: translateY(-1px);
-      box-shadow: 0 14px 40px rgba(0,0,0,.35);
-      border-color: rgba(122,167,255,.95);
-    }
-    .msg{
-      margin: 10px 0 0;
-      font-size: 13px;
-      color: var(--muted);
-      min-height: 18px;
-    }
+    .msg{ margin-top:10px; font-size:13px; color:var(--muted); min-height:18px; }
     .msg.ok{ color: var(--ok); }
     .msg.err{ color: var(--err); }
-    .footer{
-      padding: 14px 18px 18px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .footer{ padding: 14px 18px 18px; color:var(--muted); font-size:13px; }
     a{ color:#7aa7ff; text-decoration:none; }
     a:hover{ text-decoration:underline; }
   </style>
@@ -113,7 +74,7 @@
   <div class="card">
     <div class="header">
       <h1>Músicas da Jhenny 🐈‍⬛</h1>
-      <p>Faça login para cadastrar e pesquisar</p>
+      <p>Login (usuários precisam de aprovação)</p>
     </div>
 
     <div class="body">
@@ -135,11 +96,7 @@
 <script>
   const API_BASE = "https://webapp-musicas.onrender.com";
 
-  const existing = localStorage.getItem("token");
-  if (existing) window.location.href = "dashboard.html";
-
   const msgEl = document.getElementById("msg");
-
   function setMsg(text, type){
     msgEl.classList.remove("ok","err");
     if (type) msgEl.classList.add(type);
