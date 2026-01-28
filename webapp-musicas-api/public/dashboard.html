@@ -514,18 +514,27 @@
   </section>
 
   <!-- ADMIN (se sua API já tem) -->
+  <!-- ADMIN -->
   <section id="viewAdmin" class="grid" style="display:none;">
     <div class="card">
       <div class="card-header">
         <div>
           <p class="title">Admin • Usuários</p>
-          <p class="subtitle">Aprovar/Deletar e definir SUPER (conforme sua API atual).</p>
+          <p class="subtitle">Aprovar, negar (deletar) e marcar/desmarcar SUPER. Todos os usuários aparecem aqui.</p>
+        </div>
+        <div class="actions">
+          <button id="adminRefreshBtn" class="btn secondary small" type="button">Atualizar</button>
         </div>
       </div>
       <div class="card-body">
-        <div style="color:var(--muted);">
-          (Esta área depende dos endpoints ADMIN que você já tem.)
+        <div class="hint">
+          • <b>Aprovar</b> libera acesso.<br/>
+          • <b>Negar</b> remove o usuário do sistema.<br/>
+          • <b>SUPER</b> pode editar músicas de qualquer autor, mas não aprova usuários.
         </div>
+        <div style="height:12px;"></div>
+        <div class="list" id="adminUsersList"></div>
+        <div id="msgAdmin" class="msg"></div>
       </div>
     </div>
   </section>
@@ -554,6 +563,12 @@
   const viewSongs = document.getElementById("viewSongs");
   const viewLists = document.getElementById("viewLists");
   const viewAdmin = document.getElementById("viewAdmin");
+
+  // admin
+  const adminUsersListEl = document.getElementById("adminUsersList");
+  const msgAdmin = document.getElementById("msgAdmin");
+  const adminRefreshBtn = document.getElementById("adminRefreshBtn");
+
 
   const userNameEl = document.getElementById("userName");
   const userEmailEl = document.getElementById("userEmail");
@@ -665,13 +680,13 @@
     navSearch.onclick = ()=> setActive("search");
     navSongs.onclick = async ()=> { setActive("songs"); await loadSongsPage(1); };
     navLists.onclick = async ()=> { setActive("lists"); await refreshListsUI(); };
-    navAdmin.onclick = ()=> setActive("admin");
+    navAdmin.onclick = async ()=> { setActive("admin"); await loadAdminUsers(); };
 
     mNavHome.onclick = ()=> setActive("home");
     mNavSearch.onclick = ()=> setActive("search");
     mNavSongs.onclick = async ()=> { setActive("songs"); await loadSongsPage(1); };
     mNavLists.onclick = async ()=> { setActive("lists"); await refreshListsUI(); };
-    mNavAdmin.onclick = ()=> setActive("admin");
+    mNavAdmin.onclick = async ()=> { setActive("admin"); await loadAdminUsers(); };
   }
 
   logoutBtn.onclick = async () => {
@@ -698,8 +713,8 @@
   }
 
   async function refreshCount(){
-    const data = await api("/api/songs/count", { method:"GET" });
-    countEl.textContent = String(data.total ?? 0);
+    const items = await api("/api/songs", { method:"GET" });
+    countEl.textContent = String(items.length);
   }
 
   /* ===================== HOME (songs create/edit) ===================== */
@@ -1282,6 +1297,163 @@
       }
     }, 220);
   });
+
+  /* ===================== ADMIN ===================== */
+  function renderAdminHeader(){
+    if(!adminUsersListEl) return;
+    adminUsersListEl.innerHTML = `
+      <div class="row header" style="grid-template-columns: 1.2fr 1.4fr 0.8fr 260px;">
+        <div class="cell">Nome</div>
+        <div class="cell">E-mail</div>
+        <div class="cell">Status</div>
+        <div class="cell" style="text-align:right;">Ações</div>
+      </div>
+    `;
+  }
+
+  function statusBadge(u){
+    const parts = [];
+    parts.push(u.is_approved ? "Aprovado" : "Pendente");
+    if(u.is_admin) parts.push("ADMIN");
+    if(u.is_super) parts.push("SUPER");
+    return parts.join(" • ");
+  }
+
+  async function loadAdminUsers(){
+    if(!ME || !ME.is_admin){
+      setMsg(msgAdmin, "❌ Apenas ADMIN pode acessar esta área.", "err");
+      return;
+    }
+    setMsg(msgAdmin, "Carregando usuários...", "");
+    renderAdminHeader();
+
+    try{
+      const users = await api("/api/admin/users", { method:"GET" });
+
+      renderAdminHeader();
+      if(!Array.isArray(users) || users.length===0){
+        const r=document.createElement("div");
+        r.className="row";
+        r.innerHTML = `<div class="cell" style="color:var(--muted);">Nenhum usuário encontrado</div>`;
+        adminUsersListEl.appendChild(r);
+        setMsg(msgAdmin, "", "");
+        return;
+      }
+
+      for(const u of users){
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.gridTemplateColumns = "1.2fr 1.4fr 0.8fr 260px";
+
+        const st = statusBadge(u);
+        const canDelete = !u.is_admin; // backend bloqueia deletar admin
+        const showApprove = !u.is_approved;
+        const superChecked = !!u.is_super;
+
+        row.innerHTML = `
+          <div class="cell"><b>${escapeHtml(u.name || "-")}</b></div>
+          <div class="cell">${escapeHtml(u.email || "")}</div>
+          <div class="cell" style="color:var(--muted);">${escapeHtml(st)}</div>
+          <div class="actions">
+            ${showApprove ? `<button class="btn small" type="button" data-approve="${u.id}">Aprovar</button>` : ``}
+            ${showApprove ? `<button class="btn secondary small" type="button" data-approve-super="${u.id}">Aprovar SUPER</button>` : ``}
+            ${u.is_admin ? `<span style="color:var(--muted); font-size:12px;">ADMIN</span>` :
+              `<label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); border:1px solid rgba(42,58,102,.7); background:rgba(15,22,48,.35); padding:8px 10px; border-radius:12px;">
+                 <input type="checkbox" data-super="${u.id}" ${superChecked ? "checked":""} style="transform:scale(1.1);"/>
+                 SUPER
+               </label>`
+            }
+            <button class="btn danger small" type="button" data-deny="${u.id}" ${canDelete ? "" : "disabled"}>Negar</button>
+          </div>
+        `;
+
+        const approveBtn = row.querySelector(`[data-approve="${u.id}"]`);
+        if(approveBtn){
+          approveBtn.onclick = async ()=>{
+            approveBtn.disabled = true;
+            setMsg(msgAdmin, "Aprovando...", "");
+            try{
+              await api(`/api/admin/approve/${encodeURIComponent(u.id)}`, { method:"POST", body: JSON.stringify({}) });
+              setMsg(msgAdmin, "✅ Usuário aprovado.", "ok");
+              await loadAdminUsers();
+            }catch(e){
+              setMsg(msgAdmin, "❌ " + e.message, "err");
+            }finally{
+              approveBtn.disabled = false;
+            }
+          };
+        }
+
+        const approveSuperBtn = row.querySelector(`[data-approve-super="${u.id}"]`);
+        if(approveSuperBtn){
+          approveSuperBtn.onclick = async ()=>{
+            approveSuperBtn.disabled = true;
+            setMsg(msgAdmin, "Aprovando como SUPER...", "");
+            try{
+              await api(`/api/admin/approve-super/${encodeURIComponent(u.id)}`, { method:"POST", body: JSON.stringify({}) });
+              setMsg(msgAdmin, "✅ Usuário aprovado como SUPER.", "ok");
+              await loadAdminUsers();
+            }catch(e){
+              setMsg(msgAdmin, "❌ " + e.message, "err");
+            }finally{
+              approveSuperBtn.disabled = false;
+            }
+          };
+        }
+
+        const superToggle = row.querySelector(`[data-super="${u.id}"]`);
+        if(superToggle){
+          superToggle.onchange = async ()=>{
+            const val = !!superToggle.checked;
+            superToggle.disabled = true;
+            setMsg(msgAdmin, "Atualizando SUPER...", "");
+            try{
+              await api(`/api/admin/set-super/${encodeURIComponent(u.id)}`, {
+                method:"POST",
+                body: JSON.stringify({ is_super: val })
+              });
+              setMsg(msgAdmin, "✅ Atualizado.", "ok");
+              await loadAdminUsers();
+            }catch(e){
+              superToggle.checked = !val;
+              setMsg(msgAdmin, "❌ " + e.message, "err");
+            }finally{
+              superToggle.disabled = false;
+            }
+          };
+        }
+
+        const denyBtn = row.querySelector(`[data-deny="${u.id}"]`);
+        if(denyBtn){
+          denyBtn.onclick = async ()=>{
+            if(!confirm("Negar = deletar este usuário. Confirmar?")) return;
+            denyBtn.disabled = true;
+            setMsg(msgAdmin, "Deletando usuário...", "");
+            try{
+              await api(`/api/admin/deny/${encodeURIComponent(u.id)}`, { method:"POST", body: JSON.stringify({}) });
+              setMsg(msgAdmin, "✅ Usuário deletado.", "ok");
+              await loadAdminUsers();
+            }catch(e){
+              setMsg(msgAdmin, "❌ " + e.message, "err");
+            }finally{
+              denyBtn.disabled = false;
+            }
+          };
+        }
+
+        adminUsersListEl.appendChild(row);
+      }
+
+      setMsg(msgAdmin, "", "");
+    }catch(e){
+      renderAdminHeader();
+      setMsg(msgAdmin, "❌ " + e.message, "err");
+    }
+  }
+
+  if (adminRefreshBtn){
+    adminRefreshBtn.onclick = loadAdminUsers;
+  }
 
   /* ===================== INIT ===================== */
   function wireNavButtons(){
